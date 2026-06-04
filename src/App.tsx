@@ -294,9 +294,8 @@ function App() {
                   onClick={() => {
                     const current = barScenarioTargetIds || [];
                     const next = current.includes(p.id) ? current.filter((id) => id !== p.id) : [...current, p.id];
-                    state.barScenarioTargetIds = next;
                     playClick();
-                    resolveBarScenario('youngest_fail', { youngestId: 'temp_re_render' }); // Trigger re-render safely
+                    resolveBarScenario('set_targets', { targets: next });
                   }}
                   className={`neon-btn ${isSelected ? 'fail-btn' : ''}`}
                 >
@@ -430,9 +429,8 @@ function App() {
                   onClick={() => {
                     const current = barScenarioTargetIds || [];
                     const next = current.includes(p.id) ? current.filter((id) => id !== p.id) : [...current, p.id];
-                    state.barScenarioTargetIds = next;
                     playClick();
-                    resolveBarScenario('youngest_fail', { youngestId: 'temp_re_render' }); // Trigger re-render safely
+                    resolveBarScenario('set_targets', { targets: next });
                   }}
                   className={`neon-btn ${isSelected ? 'fail-btn' : ''}`}
                 >
@@ -463,7 +461,54 @@ function App() {
       );
     }
 
-    if (scenarioNum >= 13 && scenarioNum <= 22) {
+    if (scenarioNum === 21) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <PartyPopper size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ marginBottom: '6px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div style={{ opacity: 0.8, marginBottom: '6px' }}>Qui a été attrapé ? (Sélection) :</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '6px' }}>
+            {players.filter(p => p.id !== currentPlayer.id).map((p) => {
+              const isSelected = barScenarioTargetIds?.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    const next = isSelected ? [] : [p.id];
+                    playClick();
+                    resolveBarScenario('set_targets', { targets: next });
+                  }}
+                  className={`neon-btn ${isSelected ? 'fail-btn' : ''}`}
+                >
+                  🏃 {p.name}
+                </button>
+              );
+            })}
+          </div>
+          <div className="center-actions-row">
+            <button
+              onClick={() => {
+                const caughtIds = barScenarioTargetIds || [];
+                if (caughtIds.length > 0) {
+                  playSuccess();
+                  resolveBarScenario('caught_recule', { caughtIds });
+                } else {
+                  playFail();
+                  resolveBarScenario('recule_active', { recul: 3 });
+                }
+              }}
+              className="neon-btn success-btn"
+              style={{ width: '100%' }}
+            >
+              ✔️ Valider la Capture
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum >= 13 && scenarioNum <= 22 && scenarioNum !== 21) {
       let recul = 3;
       if (scenarioNum === 13 || scenarioNum === 20) {
         recul = 2;

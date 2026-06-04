@@ -502,4 +502,27 @@
     * [x] Vérification de la syntaxe : S'assurer de la conformité du code TypeScript et JSX.
     * [x] Test unitaire (jest DOM) : Ajouter/mettre à jour des tests dans gameData.spec.ts pour vérifier la présence des 22 scénarios au total et le bon tirage sans répétition.
 
+## Phase 34 : Rendre le scénario 21 (Le chat et la souris) pleinement cohérent et interactif
+* **Correction Scénario 21 et Cohérence Globale**
+    - [x] Implémentation :
+        1. Ajouter l'action 'caught_recule' dans useGameState.ts et implémenter la sélection de la personne attrapée dans App.tsx pour le scénario 21.
+        2. Corriger le scénario 4 pour que le joueur ciblé reçoive effectivement les 4 gorgées de pénalité lors de l'achat.
+        3. Réinitialiser systématiquement `barScenarioTargetIds`, `barScenarioWinnerId` et `barScenarioStage` à chaque pioche de scénario de bar pour éviter toute pollution d'état.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les corrections de cohérence et réinitialisation d'état dans le code.
+    - [x] Vérification des imports : S'assurer du bon import des icônes et hooks.
+    - [x] Vérification de la syntaxe : S'assurer de la validité syntaxique et du typage.
+    - [x] Test unitaire (jest DOM) : Adapter et ajouter des E2E tests pour valider le scénario 21 et le scénario 4.
+
+## Phase 35 : Résolution des bugs de sélection de cibles de scénarios et vérification de cohérence globale
+* **Cohérence et Sélection des Scénarios de Bar (8, 16, 21)**
+    - [x] Implémentation :
+        1. Ajouter l'action 'set_targets' à resolveBarScenario dans useGameState.ts pour mettre à jour les cibles interactives sans déclencher d'effets secondaires indésirables ou finir le tour.
+        2. Remplacer les appels hackés resolveBarScenario('youngest_fail', ...) par resolveBarScenario('set_targets', ...) dans App.tsx pour les scénarios 8, 16 et 21.
+        3. Passer en revue tous les scénarios de 1 à 22 dans App.tsx et useGameState.ts pour vérifier qu'aucune incohérence logique ne subsiste.
+    - [x] Documentation (JSDoc et commentaires) : Documenter la nouvelle action 'set_targets' et les raisons pour lesquelles la modification résout les régressions d'E2E.
+    - [x] Vérification des imports : Vérifier qu'aucun import mort n'est laissé.
+    - [x] Vérification de la syntaxe : Vérifier que le typage de l'action 'set_targets' est correct et compile.
+    - [x] Test unitaire (jest DOM) : S'assurer que les E2E tests Playwright passent à 100%.
+
+
 

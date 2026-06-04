@@ -228,7 +228,7 @@ export function useGameState() {
             let activeCard = prev.activeCard;
             let activeBarScenario: number | undefined = undefined;
             let barScenarioTargetIds: string[] = [];
-            let barScenarioWinnerId = '';
+            let barScenarioWinnerId: string | undefined = undefined;
             let barScenarioStage: GameState['barScenarioStage'] = undefined;
             let usedCardIds = prev.usedCardIds || [];
             let usedBarScenarios = prev.usedBarScenarios || [];
@@ -245,6 +245,11 @@ export function useGameState() {
               activeBarScenario = drawRes.scenario;
               usedBarScenarios = drawRes.newUsedScenarios;
               const otherPlayers = players.filter((pl) => pl.id !== p.id);
+              
+              // Réinitialisation des propriétés de scénario pour éviter toute pollution
+              barScenarioTargetIds = [];
+              barScenarioWinnerId = undefined;
+              barScenarioStage = undefined;
 
               if (activeBarScenario === 4) { // Target player boit 4
                 const randIdx = Math.floor(Math.random() * players.length);
@@ -461,10 +466,17 @@ export function useGameState() {
 
   // Part 1 of resolveBarScenario: Handles success, fail, youngest_success, youngest_fail
   const resolveBarScenario = (
-    action: 'success' | 'fail' | 'recule3' | 'youngest_fail' | 'youngest_success' | 'cul_sec_others' | 'cul_sec_all' | 'guess' | 'laugh' | 'recule_active' | 'laugh_recule',
+    action: 'success' | 'fail' | 'recule3' | 'youngest_fail' | 'youngest_success' | 'cul_sec_others' | 'cul_sec_all' | 'guess' | 'laugh' | 'recule_active' | 'laugh_recule' | 'caught_recule' | 'set_targets',
     payload?: any
   ) => {
     setState((prev) => {
+      if (action === 'set_targets') {
+        return {
+          ...prev,
+          barScenarioTargetIds: payload?.targets || [],
+        };
+      }
+
       const players = [...prev.players];
       const currentPlayerIndex = prev.currentPlayerIndex;
       const currentPlayer = { ...players[currentPlayerIndex] };
@@ -481,6 +493,14 @@ export function useGameState() {
         currentTile.level = 1;
         currentPlayer.challengesCompleted += 1;
         log = `🏢 ${currentPlayer.name} réussit le défi et achète ${currentTile.name} !`;
+        // Pour le scénario 4, le joueur désigné boit ses 4 gorgées
+        if (prev.activeBarScenario === 4 && prev.barScenarioTargetIds?.[0]) {
+          const targetIdx = players.findIndex((pl) => pl.id === prev.barScenarioTargetIds?.[0]);
+          if (targetIdx !== -1) {
+            players[targetIdx] = { ...players[targetIdx], sipsCount: players[targetIdx].sipsCount + 4 };
+            log += ` 🍺 ${players[targetIdx].name} boit 4 gorgées !`;
+          }
+        }
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'fail') {
         const actualPenalty = payload?.penalty !== undefined ? payload.penalty : penalty;
@@ -581,6 +601,23 @@ export function useGameState() {
           }
         });
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! Les rieurs reculent de 3 cases ⬅️ !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'caught_recule') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        const caughtIds: string[] = payload?.caughtIds || [];
+        caughtIds.forEach((id) => {
+          const idx = players.findIndex((pl) => pl.id === id);
+          if (idx !== -1) {
+            const oldPos = players[idx].position;
+            // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
+            const newPos = Math.max(0, oldPos - 3);
+            players[idx] = { ...players[idx], position: newPos };
+          }
+        });
+        const caughtNames = caughtIds.map(id => players.find(p => p.id === id)?.name).join(', ');
+        log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! ${caughtNames} est attrapé(e) et recule de 3 cases ⬅️ !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'guess') {
         const guessId = payload?.guessId;

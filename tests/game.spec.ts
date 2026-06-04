@@ -412,4 +412,114 @@ test.describe('Alcooly Full Game Loop E2E', () => {
     });
     expect(gameState.players[0].position).toBe(1);
   });
+
+  test('should handle Scenario 21 (Le chat et la souris) where caught player recules', async ({ page }) => {
+    await page.goto('/');
+
+    // Register players and start
+    await page.fill('.setup-input', 'Alice');
+    await page.click('.add-btn');
+    await page.fill('.setup-input', 'Bob');
+    await page.click('.add-btn');
+    await page.click('.start-btn');
+
+    // Reveal fétiche cards
+    const revealCards = page.locator('.reveal-card-3d');
+    await revealCards.nth(0).click();
+    await revealCards.nth(1).click();
+    await page.click('.reveal-confirm-btn');
+
+    // Mock state: Alice is at position 4, activeBarScenario is 21 (Le chat et la souris)
+    await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        state.players = [
+          { ...state.players[0], position: 4, laps: 0 },
+          { ...state.players[1], position: 6, laps: 0 }
+        ];
+        state.currentPlayerIndex = 0;
+        state.activeScreen = 'board';
+        state.diceValue = 1;
+        state.activeBarScenario = 21;
+        state.barScenarioTargetIds = [];
+        localStorage.setItem('alcooly_game_state', JSON.stringify(state));
+      }
+    });
+
+    await page.reload();
+
+    // Verify Scenario 21 is shown
+    await expect(page.locator('text=Le chat et la souris')).toBeVisible();
+
+    // Select Bob (id is players[1].id)
+    const targetBtn = page.locator('button:has-text("Bob")').first();
+    await expect(targetBtn).toBeVisible();
+    await targetBtn.click();
+
+    // Click "Valider la Capture"
+    await page.click('button:has-text("Valider la Capture")');
+    await page.waitForTimeout(500);
+
+    // Bob (players[1]) should reculer 3 cases (from 6 to 3)
+    const gameState = await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      return saved ? JSON.parse(saved) : null;
+    });
+    expect(gameState.players[1].position).toBe(3);
+    // Alice stays at position 4 and owns the bar
+    expect(gameState.players[0].position).toBe(4);
+    expect(gameState.tiles[4].ownerId).toBe(gameState.players[0].id);
+  });
+
+  test('should handle Scenario 4 (Cible Aléatoire) where target drinks 4 sips on success', async ({ page }) => {
+    await page.goto('/');
+
+    // Register players and start
+    await page.fill('.setup-input', 'Alice');
+    await page.click('.add-btn');
+    await page.fill('.setup-input', 'Bob');
+    await page.click('.add-btn');
+    await page.click('.start-btn');
+
+    // Reveal fétiche cards
+    const revealCards = page.locator('.reveal-card-3d');
+    await revealCards.nth(0).click();
+    await revealCards.nth(1).click();
+    await page.click('.reveal-confirm-btn');
+
+    // Mock state: Alice is at position 4, activeBarScenario is 4, target is Bob (players[1])
+    await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        state.players = [
+          { ...state.players[0], position: 4, laps: 0, sipsCount: 0 },
+          { ...state.players[1], position: 6, laps: 0, sipsCount: 0 }
+        ];
+        state.currentPlayerIndex = 0;
+        state.activeScreen = 'board';
+        state.diceValue = 1;
+        state.activeBarScenario = 4;
+        state.barScenarioTargetIds = [state.players[1].id];
+        localStorage.setItem('alcooly_game_state', JSON.stringify(state));
+      }
+    });
+
+    await page.reload();
+
+    // Click "boit 4G" success button
+    await page.click('button:has-text("boit 4G")');
+    await page.waitForTimeout(500);
+
+    // Verify Bob has 4 sips
+    const gameState = await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      return saved ? JSON.parse(saved) : null;
+    });
+    expect(gameState.players[1].sipsCount).toBe(4);
+    // Alice has 0 sips and owns Bar 2 (index 4)
+    expect(gameState.players[0].sipsCount).toBe(0);
+    expect(gameState.tiles[4].ownerId).toBe(gameState.players[0].id);
+  });
 });
