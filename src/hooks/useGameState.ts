@@ -179,8 +179,8 @@ export function useGameState() {
       }
     };
 
-    // Start the first step after a 800ms pause to display the dice result
-    setTimeout(moveOneStep, 800);
+    // Start the first step immediately (DiceRoller already paused 1.5s)
+    setTimeout(moveOneStep, 100);
   };
 
   // Resolves the drawn card challenge

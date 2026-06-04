@@ -22,20 +22,31 @@ const ROTATIONS = [
  */
 export const DiceRoller: React.FC<DiceRollerProps> = ({ onRollComplete, playerColor }) => {
   const [rolling, setRolling] = useState(false);
+  const [showingResult, setShowingResult] = useState(false);
   const [value, setValue] = useState(1);
 
-  // Triggers the dice rolling animation and sound
+  /**
+   * Triggers the dice rolling animation and sound.
+   * After the 1.2s spin, the dice shows the result for 1.5s,
+   * then calls onRollComplete to start token movement.
+   */
   const handleRoll = () => {
-    if (rolling) return;
+    if (rolling || showingResult) return;
     setRolling(true);
     playDiceRoll(1200);
 
-    // Roll duration is 1.2s
+    // Phase 1: Spin for 1.2s then show result
     setTimeout(() => {
       const newValue = Math.floor(Math.random() * 6) + 1;
       setValue(newValue);
       setRolling(false);
-      onRollComplete(newValue);
+      setShowingResult(true);
+
+      // Phase 2: Hold result visible for 1.5s before triggering movement
+      setTimeout(() => {
+        setShowingResult(false);
+        onRollComplete(newValue);
+      }, 1500);
     }, 1200);
   };
 
@@ -107,11 +118,11 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({ onRollComplete, playerCo
       </div>
       <button
         onClick={handleRoll}
-        disabled={rolling}
+        disabled={rolling || showingResult}
         className="neon-btn roll-btn"
         style={{ borderColor: playerColor, boxShadow: `0 0 12px ${playerColor}`, color: playerColor }}
       >
-        {rolling ? 'Lancement...' : 'Lancer le Dé'}
+        {rolling ? 'Lancement...' : showingResult ? `🎲 ${value} !` : 'Lancer le Dé'}
       </button>
     </div>
   );
