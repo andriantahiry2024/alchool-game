@@ -1,6 +1,39 @@
 import { useState, useEffect } from 'react';
-import type { GameState, Player, SuitType } from '../types';
-import { INITIAL_TILES, getRandomCard } from '../gameData';
+import type { GameState, Player, SuitType, Card } from '../types';
+import { INITIAL_TILES, CARDS_DATABASE } from '../gameData';
+
+/**
+ * Draws a random card from the database without repeating cards that were already drawn in the current rotation.
+ */
+export function drawCardWithoutRepetition(usedIds: string[]): { card: Card; newUsedIds: string[] } {
+  let available = CARDS_DATABASE.filter((c) => !usedIds.includes(c.id));
+  let newUsedIds = [...usedIds];
+  if (available.length === 0) {
+    available = CARDS_DATABASE;
+    newUsedIds = [];
+  }
+  const randomIndex = Math.floor(Math.random() * available.length);
+  const selectedCard = available[randomIndex];
+  newUsedIds.push(selectedCard.id);
+  return { card: selectedCard, newUsedIds: newUsedIds };
+}
+
+/**
+ * Selects a random bar scenario index (1 to 12) without repeating until all 12 have been played.
+ */
+export function drawBarScenarioWithoutRepetition(usedScenarios: number[]): { scenario: number; newUsedScenarios: number[] } {
+  let available = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((s) => !usedScenarios.includes(s));
+  let newUsedScenarios = [...usedScenarios];
+  if (available.length === 0) {
+    available = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    newUsedScenarios = [];
+  }
+  const randomIndex = Math.floor(Math.random() * available.length);
+  const selectedScenario = available[randomIndex];
+  newUsedScenarios.push(selectedScenario);
+  return { scenario: selectedScenario, newUsedScenarios: newUsedScenarios };
+}
+
 
 /**
  * Shuffles a 32-card traditional deck and returns a card fétiche for each player.
@@ -31,6 +64,8 @@ const INITIAL_STATE: GameState = {
   activeDuoChallenge: null,
   diceValue: null,
   logMessages: ['Bienvenue sur Alcooly ! configurez la partie.'],
+  usedBarScenarios: [],
+  usedCardIds: [],
 };
 
 /**
@@ -162,14 +197,20 @@ export function useGameState() {
             let barScenarioTargetIds: string[] = [];
             let barScenarioWinnerId = '';
             let barScenarioStage: GameState['barScenarioStage'] = undefined;
+            let usedCardIds = prev.usedCardIds || [];
+            let usedBarScenarios = prev.usedBarScenarios || [];
 
             if (landedTile.type === 'card') {
               nextScreen = 'card';
-              activeCard = getRandomCard();
+              const drawRes = drawCardWithoutRepetition(usedCardIds);
+              activeCard = drawRes.card;
+              usedCardIds = drawRes.newUsedIds;
             } else if (landedTile.type === 'bottle') {
               nextScreen = 'bottle';
             } else if (landedTile.type === 'bar' && !landedTile.ownerId) {
-              activeBarScenario = Math.floor(Math.random() * 12) + 1; // 1 to 12
+              const drawRes = drawBarScenarioWithoutRepetition(usedBarScenarios);
+              activeBarScenario = drawRes.scenario;
+              usedBarScenarios = drawRes.newUsedScenarios;
               const otherPlayers = players.filter((pl) => pl.id !== p.id);
 
               if (activeBarScenario === 4) { // Target player boit 4
@@ -204,6 +245,8 @@ export function useGameState() {
               barScenarioTargetIds,
               barScenarioWinnerId,
               barScenarioStage,
+              usedCardIds,
+              usedBarScenarios,
               logMessages: [log, ...prev.logMessages].slice(0, 15),
             };
           });
@@ -238,6 +281,7 @@ export function useGameState() {
 
       let nextScreen: GameState['activeScreen'] = 'board';
       let activeCard = null;
+      let usedCardIds = prev.usedCardIds || [];
 
       if (card) {
         if (card.id === 'd3') {
@@ -257,7 +301,9 @@ export function useGameState() {
           const landedTile = prev.tiles[newPos];
           if (landedTile.type === 'card') {
             nextScreen = 'card';
-            activeCard = getRandomCard();
+            const drawRes = drawCardWithoutRepetition(usedCardIds);
+            activeCard = drawRes.card;
+            usedCardIds = drawRes.newUsedIds;
           } else if (landedTile.type === 'bottle') {
             nextScreen = 'bottle';
           }
@@ -271,7 +317,9 @@ export function useGameState() {
           const landedTile = prev.tiles[newPos];
           if (landedTile.type === 'card') {
             nextScreen = 'card';
-            activeCard = getRandomCard();
+            const drawRes = drawCardWithoutRepetition(usedCardIds);
+            activeCard = drawRes.card;
+            usedCardIds = drawRes.newUsedIds;
           } else if (landedTile.type === 'bottle') {
             nextScreen = 'bottle';
           }
@@ -283,6 +331,7 @@ export function useGameState() {
         players,
         activeCard,
         activeScreen: nextScreen,
+        usedCardIds,
         logMessages: [log, ...prev.logMessages].slice(0, 15),
       };
     });

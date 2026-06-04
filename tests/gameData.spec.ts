@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { CARDS_DATABASE, INITIAL_TILES } from '../src/gameData';
+import { drawCardWithoutRepetition, drawBarScenarioWithoutRepetition } from '../src/hooks/useGameState';
 
 test.describe('Game Data Verification', () => {
   test('should have 32 tiles on the board', () => {
@@ -27,5 +28,38 @@ test.describe('Game Data Verification', () => {
       expect(card.text.length).toBeGreaterThan(0);
       expect(card.penalty).toBeGreaterThanOrEqual(0);
     });
+  });
+
+  test('should draw cards and bar scenarios without repetition until all are used', () => {
+    let usedCardIds: string[] = [];
+    const totalCards = CARDS_DATABASE.length;
+    const drawnIds = new Set<string>();
+
+    for (let i = 0; i < totalCards; i++) {
+      const { card, newUsedIds } = drawCardWithoutRepetition(usedCardIds);
+      expect(drawnIds.has(card.id)).toBe(false);
+      drawnIds.add(card.id);
+      usedCardIds = newUsedIds;
+      expect(usedCardIds.length).toBe(i + 1);
+    }
+
+    const { card: nextCard, newUsedIds: nextUsedCardIds } = drawCardWithoutRepetition(usedCardIds);
+    expect(nextUsedCardIds.length).toBe(1);
+    expect(nextUsedCardIds[0]).toBe(nextCard.id);
+
+    let usedScenarios: number[] = [];
+    const drawnScenarios = new Set<number>();
+
+    for (let i = 0; i < 12; i++) {
+      const { scenario, newUsedScenarios } = drawBarScenarioWithoutRepetition(usedScenarios);
+      expect(drawnScenarios.has(scenario)).toBe(false);
+      drawnScenarios.add(scenario);
+      usedScenarios = newUsedScenarios;
+      expect(usedScenarios.length).toBe(i + 1);
+    }
+
+    const { scenario: nextScenario, newUsedScenarios: nextUsedScenarios } = drawBarScenarioWithoutRepetition(usedScenarios);
+    expect(nextUsedScenarios.length).toBe(1);
+    expect(nextUsedScenarios[0]).toBe(nextScenario);
   });
 });

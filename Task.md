@@ -379,3 +379,13 @@
     - [x] Vérification des imports : Nettoyer les imports inutilisés.
     - [x] Vérification de la syntaxe : S'assurer que le JSX compile correctement.
     - [x] Test unitaire (jest DOM) : S'assurer que les boutons du centre s'affichent et réagissent correctement.
+
+## Phase 19 : Rotation Sans Répétition des Scénarios de Bar et Cartes Mystères
+* **Suivi des Scénarios de Bar et Cartes déjà Joués**
+    - [x] Implémentation : Ajouter `usedBarScenarios` (indices) et `usedCardIds` (chaînes) dans `types.ts` au niveau de l'interface `GameState`. Les initialiser à `[]` dans `INITIAL_STATE`.
+    - [x] Implémentation : Mettre à jour `useGameState.ts` pour filtrer les scénarios et les cartes mystères afin d'exclure ceux déjà joués, et réinitialiser les tableaux respectifs dès que toutes les options ont été épuisées.
+    - [x] Documentation (JSDoc et commentaires) : Expliquer le mécanisme d'exclusion et de réinitialisation pour les cartes et bars.
+    - [x] Vérification des imports : Nettoyer les imports (importer `CARDS_DATABASE` dans `useGameState.ts` et enlever les dépendances inutiles).
+    - [x] Vérification de la syntaxe : S'assurer que le typage TS compile sans avertissement ni erreur.
+    - [x] Test unitaire (jest DOM) : Adapter et écrire des tests dans `tests/game.spec.ts` pour vérifier qu'aucun scénario de bar ni aucune carte mystère ne se répète avant la fin d'une rotation complète.
+

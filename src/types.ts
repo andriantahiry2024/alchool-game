@@ -87,4 +87,7 @@ export interface GameState {
   barScenarioTargetIds?: string[]; // Player IDs targeted by the active scenario
   barScenarioWinnerId?: string; // Winner or correct target player ID for the scenario
   barScenarioStage?: 'guess' | 'result'; // Stage for interactive scenarios (like Scenario 12)
+  usedBarScenarios?: number[]; // Scenario indices that were already played
+  usedCardIds?: string[]; // Mystery card IDs that were already drawn
 }
+
