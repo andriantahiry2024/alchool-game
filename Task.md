@@ -389,3 +389,12 @@
     - [x] Vérification de la syntaxe : S'assurer que le typage TS compile sans avertissement ni erreur.
     - [x] Test unitaire (jest DOM) : Adapter et écrire des tests dans `tests/game.spec.ts` pour vérifier qu'aucun scénario de bar ni aucune carte mystère ne se répète avant la fin d'une rotation complète.
 
+## Phase 20 : Agrandissement des Instructions du Centre du Plateau
+* **Optimisation de la Lisibilité du Texte Central**
+    - [x] Implémentation : Augmenter la taille de police (`font-size`) pour le titre (`.center-action-card h3`) et la description/instructions (`.center-action-card p`) dans `src/index.css` pour une meilleure visibilité.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les choix de design responsive pour le texte central.
+    - [x] Vérification des imports : S'assurer que le fichier CSS compile sans problème d'import.
+    - [x] Vérification de la syntaxe : S'assurer que les valeurs CSS sont valides.
+    - [x] Test unitaire (jest DOM) : Relancer et vérifier que tous les tests Playwright existants passent toujours avec succès.
+
+

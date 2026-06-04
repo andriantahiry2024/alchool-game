@@ -561,12 +561,12 @@ body {
 
 .center-action-card h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
 }
 
 .center-action-card p {
-  font-size: 11px;
+  font-size: 13.5px;
   color: var(--text-light);
   line-height: 1.35;
   margin: 0;
