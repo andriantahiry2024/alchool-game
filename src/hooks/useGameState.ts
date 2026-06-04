@@ -99,7 +99,14 @@ const getInitialState = (): GameState => {
     const saved = localStorage.getItem('alcooly_game_state');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          ...INITIAL_STATE,
+          ...parsed,
+          usedBarScenarios: parsed.usedBarScenarios || [],
+          usedCardIds: parsed.usedCardIds || [],
+          usedDuoChallenges: parsed.usedDuoChallenges || [],
+        };
       } catch (e) {
         console.error('Failed to parse saved state:', e);
       }
@@ -136,6 +143,9 @@ export function useGameState() {
       ...prev,
       players: playersWithCards,
       activeScreen: 'reveal',
+      usedBarScenarios: [],
+      usedCardIds: [],
+      usedDuoChallenges: [],
       logMessages: ['Chaque joueur tire sa carte fétiche !', 'La soirée commence !'],
     }));
   };

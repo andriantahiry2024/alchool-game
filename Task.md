@@ -478,4 +478,12 @@
     - [x] Vérification de la syntaxe
     - [x] Test unitaire (jest DOM)
 
+## Phase 31 : Résolution du problème de répétition des scénarios (localStorage & initialisation)
+* **Résolution Répétition Scénarios**
+    - [x] Implémentation : Mettre à jour getInitialState pour fusionner l'état localStorage avec les valeurs par défaut (evitant les undefined d'anciennes versions), et mettre à jour startGame pour réinitialiser les tableaux usedBarScenarios, usedCardIds et usedDuoChallenges à [] au début de chaque nouvelle partie.
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
 
