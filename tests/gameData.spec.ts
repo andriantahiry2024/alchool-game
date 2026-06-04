@@ -50,7 +50,7 @@ test.describe('Game Data Verification', () => {
     let usedScenarios: number[] = [];
     const drawnScenarios = new Set<number>();
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 22; i++) {
       const { scenario, newUsedScenarios } = drawBarScenarioWithoutRepetition(usedScenarios);
       expect(drawnScenarios.has(scenario)).toBe(false);
       drawnScenarios.add(scenario);

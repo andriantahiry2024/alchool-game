@@ -22,10 +22,10 @@ export function drawCardWithoutRepetition(usedIds: string[]): { card: Card; newU
  * Selects a random bar scenario index (1 to 12) without repeating until all 12 have been played.
  */
 export function drawBarScenarioWithoutRepetition(usedScenarios: number[]): { scenario: number; newUsedScenarios: number[] } {
-  let available = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((s) => !usedScenarios.includes(s));
+  let available = Array.from({ length: 22 }, (_, i) => i + 1).filter((s) => !usedScenarios.includes(s));
   let newUsedScenarios = [...usedScenarios];
   if (available.length === 0) {
-    available = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    available = Array.from({ length: 22 }, (_, i) => i + 1);
     newUsedScenarios = [];
   }
   const randomIndex = Math.floor(Math.random() * available.length);
@@ -461,7 +461,7 @@ export function useGameState() {
 
   // Part 1 of resolveBarScenario: Handles success, fail, youngest_success, youngest_fail
   const resolveBarScenario = (
-    action: 'success' | 'fail' | 'recule3' | 'youngest_fail' | 'youngest_success' | 'cul_sec_others' | 'cul_sec_all' | 'guess' | 'laugh',
+    action: 'success' | 'fail' | 'recule3' | 'youngest_fail' | 'youngest_success' | 'cul_sec_others' | 'cul_sec_all' | 'guess' | 'laugh' | 'recule_active' | 'laugh_recule',
     payload?: any
   ) => {
     setState((prev) => {
@@ -557,6 +557,30 @@ export function useGameState() {
           }
         });
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Les rieurs boivent un Cul Sec 🍻 !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'recule_active') {
+        const recul = payload?.recul !== undefined ? payload.recul : 2;
+        const oldPos = currentPlayer.position;
+        // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
+        const newPos = Math.max(0, oldPos - recul);
+        currentPlayer.position = newPos;
+        log = `⬅️ ${currentPlayer.name} rate le défi et recule de ${recul} cases sur : ${prev.tiles[newPos].name} !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'laugh_recule') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        const laughIds: string[] = payload?.laughIds || [];
+        laughIds.forEach((id) => {
+          const idx = players.findIndex((pl) => pl.id === id);
+          if (idx !== -1) {
+            const oldPos = players[idx].position;
+            // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
+            const newPos = Math.max(0, oldPos - 3);
+            players[idx] = { ...players[idx], position: newPos };
+          }
+        });
+        log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! Les rieurs reculent de 3 cases ⬅️ !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'guess') {
         const guessId = payload?.guessId;

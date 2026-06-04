@@ -494,4 +494,12 @@
     * [x] Vérification de la syntaxe : S'assurer de la conformité du code TypeScript.
     * [x] Test unitaire (jest DOM) : Ajouter un test Playwright pour vérifier qu'un joueur ne recule jamais sous l'index 0 et ne wrap-around pas.
 
+## Phase 33 : Ajout de 10 nouveaux scénarios de bar axés sur le recul
+* **Nouveaux Scénarios de Recul**
+    * [x] Implémentation : Ajouter 10 scénarios de bar rigolos et sans alcool (avec des reculs de cases) dans gameData.ts et useGameState.ts, puis gérer leur résolution.
+    * [x] Documentation (JSDoc et commentaires) : Documenter les nouvelles actions de scénario et leurs règles de recul.
+    * [x] Vérification des imports : S'assurer du bon import des icônes et composants.
+    * [x] Vérification de la syntaxe : S'assurer de la conformité du code TypeScript et JSX.
+    * [x] Test unitaire (jest DOM) : Ajouter/mettre à jour des tests dans gameData.spec.ts pour vérifier la présence des 22 scénarios au total et le bon tirage sans répétition.
+
 

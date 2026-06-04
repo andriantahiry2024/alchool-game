@@ -329,4 +329,87 @@ test.describe('Alcooly Full Game Loop E2E', () => {
     // S'assurer que le jeu n'est pas fini
     expect(gameState.activeScreen).not.toBe('gameover');
   });
+
+  test('should handle new bar scenarios (13 & 16) with retrograde penalties', async ({ page }) => {
+    await page.goto('/');
+
+    // Register players and start
+    await page.fill('.setup-input', 'Alice');
+    await page.click('.add-btn');
+    await page.fill('.setup-input', 'Bob');
+    await page.click('.add-btn');
+    await page.click('.start-btn');
+
+    // Reveal fétiche cards
+    const revealCards = page.locator('.reveal-card-3d');
+    await revealCards.nth(0).click();
+    await revealCards.nth(1).click();
+    await page.click('.reveal-confirm-btn');
+
+    // Mock state in localStorage: Alice is active, lands on a Bar, activeBarScenario is 13 (Sommelier)
+    await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        state.players = [
+          { ...state.players[0], position: 1, laps: 0 },
+          { ...state.players[1], position: 2, laps: 0 }
+        ];
+        state.currentPlayerIndex = 0;
+        state.activeScreen = 'board';
+        state.diceValue = 1;
+        state.activeBarScenario = 13;
+        localStorage.setItem('alcooly_game_state', JSON.stringify(state));
+      }
+    });
+
+    await page.reload();
+
+    // Verify Scenario 13 Sommelier is shown
+    await expect(page.locator('text=Scénario du Sommelier')).toBeVisible();
+
+    // Click "Échoué" (which recules 2 cases). Alice is at index 1, so reculer of 2 should clamp to 0.
+    await page.click('button:has-text("Échoué")');
+    await page.waitForTimeout(500);
+
+    // Verify Alice is at position 0
+    let gameState = await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      return saved ? JSON.parse(saved) : null;
+    });
+    expect(gameState.players[0].position).toBe(0);
+
+    // Mock state again: activeBarScenario is 16 (Blague Carambar)
+    await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        state.players = [
+          { ...state.players[0], position: 4, laps: 0 },
+          { ...state.players[1], position: 6, laps: 0 }
+        ];
+        state.currentPlayerIndex = 0;
+        state.activeScreen = 'board';
+        state.diceValue = 1;
+        state.activeBarScenario = 16;
+        state.barScenarioTargetIds = [];
+        localStorage.setItem('alcooly_game_state', JSON.stringify(state));
+      }
+    });
+
+    await page.reload();
+
+    // Verify Scenario 16 is shown
+    await expect(page.locator('text=La Blague Carambar')).toBeVisible();
+
+    // Nobody laughs, click "Valider l'effet". Alice should reculer 3 cases (from 4 to 1).
+    await page.click('button:has-text("Valider l\'effet")');
+    await page.waitForTimeout(500);
+
+    gameState = await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      return saved ? JSON.parse(saved) : null;
+    });
+    expect(gameState.players[0].position).toBe(1);
+  });
 });

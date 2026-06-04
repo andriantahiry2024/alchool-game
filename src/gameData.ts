@@ -275,5 +275,15 @@ export const BAR_SCENARIOS: BarScenario[] = [
   { id: 9, title: "Marche Arrière Collective ⬅️", description: "Tout le monde recule de 3 cases sauf le joueur actif !" },
   { id: 10, title: "Le Silence est d'Or 🤫", description: "Tout le monde reste muet durant toute la partie jusqu'à ce que quelqu'un rit. Le premier qui rit boit cul sec !" },
   { id: 11, title: "Honte de Soirée 🗣️", description: "Le joueur actif doit raconter sa pire honte de soirée, sinon il boit cul sec !" },
-  { id: 12, title: "La Devinette de l'Objet 🔍", description: "Trois joueurs cachent un objet dans leur main. Le joueur actif devine qui l'a. S'il a raison, les 3 boivent cul sec, sinon l'actif boit cul sec." }
+  { id: 12, title: "La Devinette de l'Objet 🔍", description: "Trois joueurs cachent un objet dans leur main. Le joueur actif devine qui l'a. S'il a raison, les 3 boivent cul sec, sinon l'actif boit cul sec." },
+  { id: 13, title: "Scénario du Sommelier 🍷", description: "Citez 5 animaux aquatiques mangeables en 5 secondes." },
+  { id: 14, title: "Le Défi de la Statue 🗿", description: "Restez immobile sans cligner des yeux pendant 20 secondes. Vos adversaires peuvent faire des grimaces (sans vous toucher)." },
+  { id: 15, title: "Le Chanteur Né pour Briller 🎤", description: "Chantez le refrain d'une chanson française connue. Vos adversaires votent pour la chanson et pour valider votre performance." },
+  { id: 16, title: "La Blague Carambar 🍬", description: "Racontez une blague en moins de 15 secondes. Si personne ne sourit ou ne rit, c'est raté !" },
+  { id: 17, title: "Le Rimeur de l'Apéro 📝", description: "Faites une poésie de 3 phrases qui riment avec 'mivanitika' sans hésiter, top 5s chrono avant de se lancer." },
+  { id: 18, title: "Le Ninja Silencieux 🥷", description: "Bande tes yeux et touche quelqu'un, devine qui c'est." },
+  { id: 19, title: "La Gymnastique Cérébrale 🧠", description: "Donne un nom de pays dont 3 joueurs choisiront l'emplacement du continent." },
+  { id: 20, title: "Le Mime Alcoolisé 🧮", description: "Imite le son d'un animal que le groupe choisira pour toi en moins de 5 secondes." },
+  { id: 21, title: "Le chat et la souris 🎭", description: "Attrape quelqu'un en moins de 15 secondes. Laisse les joueurs prendre de l'élan pendant 3s." },
+  { id: 22, title: "lavage du Dimanche 🦆", description: "Lave le visage de la personne en face de toi avec du savon." }
 ];
