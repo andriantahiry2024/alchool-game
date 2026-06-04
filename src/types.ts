@@ -1,0 +1,85 @@
+/**
+ * Suits for standard playing cards.
+ */
+export type SuitType = 'pique' | 'coeur' | 'carreau' | 'trefle';
+
+/**
+ * Category of drinking cards.
+ */
+export type CardCategory = 'action' | 'truth' | 'never' | 'rule' | 'movement';
+
+/**
+ * Interface representing a game card containing a challenge or rule.
+ */
+export interface Card {
+  id: string;
+  category: CardCategory;
+  suit: SuitType;
+  cardValue: string; // e.g. "As", "Roi", "Dame", "Valet", "10", "8", "7"
+  title: string;
+  text: string;
+  penalty: number; // Number of sips (gorgées)
+}
+
+/**
+ * Types of tiles on the board.
+ */
+export type TileType =
+  | 'start'
+  | 'bar'
+  | 'card'
+  | 'bottle'
+  | 'prison'
+  | 'goto_prison'
+  | 'minigame'
+  | 'tax'
+  | 'chill';
+
+/**
+ * Interface representing a tile on the 16-space board.
+ */
+export interface Tile {
+  id: number; // 0 to 15
+  name: string;
+  type: TileType;
+  description: string;
+  color?: string; // Hex or CSS color variable
+  ownerId?: string; // Player ID who owns this bar (only for 'bar' types)
+  level?: number; // Level of the bar (e.g. 0 to 3 upgrades)
+  price?: number; // Price to purchase/upgrade in sips
+}
+
+/**
+ * Interface representing a player.
+ */
+export interface Player {
+  id: string;
+  name: string;
+  color: string; // Neon hex code or class name
+  position: number; // Index of the tile (0 to 15)
+  sipsCount: number; // Number of sips taken
+  challengesCompleted: number; // Count of successful challenges
+  isPrisoner: boolean;
+  prisonTurns: number; // Remaining turns to stay in jail (max 1 or 2)
+  card?: {
+    suit: SuitType;
+    cardValue: string;
+  };
+  laps: number;
+  powerUsed: boolean;
+}
+
+/**
+ * Interface representing the overall game state.
+ */
+export interface GameState {
+  players: Player[];
+  currentPlayerIndex: number;
+  tiles: Tile[];
+  activeCard: Card | null;
+  activeScreen: 'setup' | 'reveal' | 'board' | 'bottle' | 'card' | 'dice' | 'minigame' | 'gameover';
+  selectedBottleTargetId: string | null;
+  activeDuoChallenge: string | null;
+  diceValue: number | null;
+  logMessages: string[];
+}
