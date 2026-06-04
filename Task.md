@@ -297,6 +297,20 @@
     - [x] Vérification de la syntaxe : Valider la syntaxe et la compilation.
     - [x] Test unitaire (jest DOM) : Valider le bon passage de tous les tests Playwright.
 
+## Phase 15 : Support PWA et Mode Hors-ligne Total (Offline)
+* **Configuration PWA (Manifest & Meta Tags)**
+    - [x] Implémentation : Créer `manifest.json` dans `public/` avec le nom de l'application, le thème néon, l'affichage autonome et les références aux icônes.
+    - [x] Implémentation : Ajouter les balises meta mobiles et PWA (theme-color, apple-touch-icon, etc.) dans `index.html` et lier le manifest.
+    - [x] Documentation (JSDoc et commentaires) : Documenter la structure du manifest et les balises meta.
+    - [x] Vérification de la syntaxe : S'assurer que le fichier manifest.json est valide.
+
+* **Service Worker et Caching Hors-ligne (Offline)**
+    - [x] Implémentation : Créer le fichier `sw.js` dans `public/` configuré pour intercepter les requêtes, pré-cacher tous les assets statiques (.html, .js, .css, images, fichiers audio) et servir en mode Cache-First pour une disponibilité 100% hors-ligne.
+    - [x] Implémentation : Ajouter le script d'enregistrement du Service Worker dans `src/main.tsx` avec gestion des cycles de mise à jour.
+    - [x] Documentation (JSDoc et commentaires) : Documenter la stratégie de caching (Cache-First) et de mise à jour (activation immédiate).
+    - [x] Vérification des imports : S'assurer que le service worker est bien servi à la racine.
+    - [x] Test unitaire (jest DOM) : Valider que le projet compile et passe les tests Playwright avec le SW actif.
+
 
 
 
