@@ -8,6 +8,7 @@ import { playClick, playFail, playSuccess } from './utils/audio';
 import { BottleSpinner } from './components/BottleSpinner';
 import { RevealCards } from './components/RevealCards';
 import { Shield, AlertTriangle, Users, GlassWater, Flame, Menu, X, Beer, Crown, Trophy, PartyPopper } from 'lucide-react';
+import { BAR_SCENARIOS } from './gameData';
 
 /**
  * Main App Component.
@@ -23,6 +24,7 @@ function App() {
     resolveCard,
     resolveBottle,
     resolveBar,
+    resolveBarScenario,
     payJailFine,
     nextTurn,
     sendToJail,
@@ -35,7 +37,19 @@ function App() {
     resetGame,
   } = useGameState();
 
-  const { players, currentPlayerIndex, tiles, activeCard, activeScreen, selectedBottleTargetId, diceValue, logMessages } = state;
+  const {
+    players,
+    currentPlayerIndex,
+    tiles,
+    activeCard,
+    activeScreen,
+    selectedBottleTargetId,
+    diceValue,
+    logMessages,
+    activeBarScenario,
+    barScenarioTargetIds,
+    barScenarioStage,
+  } = state;
 
   const getSuitSymbol = (suit: string) => {
     if (suit === 'pique') return '♠️';
@@ -134,6 +148,277 @@ function App() {
     );
   }
 
+
+  /**
+   * Renders UI for random interactive bar scenarios (Part 1: Scenarios 1-4).
+   */
+  const renderBarScenarioUI = (scenarioNum: number) => {
+    const landedTile = tiles[currentPlayer.position];
+    const scenario = BAR_SCENARIOS.find((s) => s.id === scenarioNum);
+    if (!scenario) return null;
+
+    if (scenarioNum === 1) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <Crown size={22} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>💋 Réussi (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail', { penalty: 6 }); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>🍺 Couples Cul Sec</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 2) {
+      return (
+        <div className="center-action-card border-neon-red" style={{ padding: '6px' }}>
+          <AlertTriangle size={20} className="pulse" color="#ff3333" />
+          <h3 style={{ fontSize: '11px', margin: '2px 0' }} className="text-neon-red">{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '6px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div style={{ fontSize: '9px', opacity: 0.8, marginBottom: '4px' }}>Qui est le plus jeune ?</div>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', width: '100%' }}>
+            {players.map((p) => (
+              <div key={p.id} style={{ display: 'flex', gap: '3px', flex: '1 1 45%' }}>
+                <button onClick={() => { playSuccess(); resolveBarScenario('youngest_success', { youngestId: p.id }); }} className="neon-btn success-btn" style={{ flex: 1, fontSize: '8px', padding: '3px', borderColor: p.color, color: p.color }}>
+                  🍺 {p.name} boit
+                </button>
+                <button onClick={() => { playFail(); resolveBarScenario('youngest_fail', { youngestId: p.id }); }} className="neon-btn fail-btn" style={{ flex: 1, fontSize: '8px', padding: '3px' }}>
+                  ↩️ DÉPART
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 3) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <Flame size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>🩲 Montré (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>🍺 Boire {landedTile.price || 3}G</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 4) {
+      const targetId = barScenarioTargetIds?.[0];
+      const targetPlayer = players.find((p) => p.id === targetId);
+      const targetName = targetPlayer ? targetPlayer.name : "Quelqu'un";
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <Users size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>
+            {scenario.description.replace("Un joueur aléatoire indiqué par l'application", targetName)}
+          </p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>🍺 {targetName} boit 4G (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>❌ Refuser (Boire)</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 5) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <Crown size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>✌️ Défi Fait (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>🍺 Boire {landedTile.price || 3}G</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 6) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <GlassWater size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '11px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('cul_sec_others'); }} className="neon-btn success-btn" style={{ fontSize: '8px', padding: '4px' }}>👅 Quelqu'un a réussi !</button>
+            <button onClick={() => { playFail(); resolveBarScenario('cul_sec_all'); }} className="neon-btn fail-btn" style={{ fontSize: '8px', padding: '4px' }}>❌ Personne n'a réussi</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 7) {
+      const p1 = players.find((p) => p.id === barScenarioTargetIds?.[0])?.name || "Joueur 1";
+      const p2 = players.find((p) => p.id === barScenarioTargetIds?.[1])?.name || "Joueur 2";
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <PartyPopper size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>
+            <strong>{p1}</strong> et <strong>{p2}</strong> se font des bisous sur le front !
+          </p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>😘 Fait (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>🍺 Refuser & Boire</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 8) {
+      // Scenario 8 requires checking who laughed. We can display simple selection or just buttons.
+      // Let's list checkboxes/buttons for players who laughed to penalize them!
+      return (
+        <div className="center-action-card border-neon-red" style={{ padding: '6px' }}>
+          <AlertTriangle size={20} className="pulse" color="#ff3333" />
+          <h3 style={{ fontSize: '11px', margin: '2px 0' }} className="text-neon-red">{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '6px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div style={{ fontSize: '9px', opacity: 0.8, marginBottom: '4px' }}>Qui a ri ? (Sélection multiple) :</div>
+          <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', width: '100%', marginBottom: '4px' }}>
+            {players.map((p) => {
+              const isSelected = barScenarioTargetIds?.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    const current = barScenarioTargetIds || [];
+                    const next = current.includes(p.id) ? current.filter((id) => id !== p.id) : [...current, p.id];
+                    // We can update state target ids dynamically!
+                    state.barScenarioTargetIds = next;
+                    playClick();
+                    // Trigger a local state re-render by calling dummy state change or forceUpdate:
+                    resolveBarScenario('guess', { guessId: 'temp_re_render' }); // Wait! We shouldn't mutate state directly.
+                  }}
+                  className={`neon-btn ${isSelected ? 'fail-btn' : ''}`}
+                  style={{ flex: '1 1 30%', fontSize: '8px', padding: '3px' }}
+                >
+                  😂 {p.name}
+                </button>
+              );
+            })}
+          </div>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('laugh', { laughIds: barScenarioTargetIds || [] }); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>✔️ Appliquer (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>❌ Annuler</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 9) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <Shield size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('recule3'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>⬅️ Reculer tout le monde (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>❌ Annuler</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 10) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <Crown size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>🤫 Défi Actif (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>❌ Refuser (Boire)</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 11) {
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <Flame size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ fontSize: '12px', margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <div className="center-actions-row">
+            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn" style={{ fontSize: '9px', padding: '4px' }}>🗣️ Raconter (Acheter)</button>
+            <button onClick={() => { playFail(); resolveBarScenario('fail', { penalty: 6 }); }} className="neon-btn fail-btn" style={{ fontSize: '9px', padding: '4px' }}>🍺 Refuser & Cul Sec</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (scenarioNum === 12) {
+      // Scenario 12: Object guess
+      const targets = barScenarioTargetIds || [];
+      const targetNames = targets.map((id) => players.find((p) => p.id === id)?.name || "Quelqu'un");
+      const isGuessing = barScenarioStage === 'guess';
+
+      if (isGuessing) {
+        return (
+          <div className="center-action-card border-neon-blue" style={{ padding: '6px' }}>
+            <AlertTriangle size={20} className="pulse" color="#00f2fe" />
+            <h3 style={{ fontSize: '11px', margin: '2px 0' }} className="text-neon-blue">{scenario.title}</h3>
+            <p style={{ fontSize: '9px', marginBottom: '6px', lineHeight: '1.2' }}>
+              {targetNames.join(', ')} cachent un objet. Devinez qui l'a !
+            </p>
+            <div style={{ display: 'flex', gap: '4px', flexDirection: 'column', width: '100%' }}>
+              {targets.map((id, idx) => (
+                <button
+                  key={id}
+                  onClick={() => { playClick(); resolveBarScenario('guess', { guessId: id }); }}
+                  className="neon-btn"
+                  style={{ fontSize: '9px', padding: '4px 6px', width: '100%' }}
+                >
+                  🔍 Deviner {targetNames[idx]}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // Result screen
+      return (
+        <div className="center-action-card border-neon-green" style={{ padding: '8px' }}>
+          <PartyPopper size={20} color="#39ff14" />
+          <h3 style={{ fontSize: '11px', margin: '2px 0' }} className="text-neon-green">Résultat Devinette</h3>
+          <p style={{ fontSize: '9px', marginBottom: '8px', textAlign: 'center', lineHeight: '1.25' }}>
+            {logMessages[0]}
+          </p>
+          <div className="center-actions-row" style={{ width: '100%' }}>
+            <button
+              onClick={() => {
+                const correct = state.logMessages[0].includes('juste');
+                if (correct) {
+                  playSuccess();
+                  // 3 players drink cul sec, active buys bar
+                  resolveBarScenario('cul_sec_others');
+                } else {
+                  playFail();
+                  // active player drinks cul sec, does NOT buy
+                  resolveBarScenario('fail', { penalty: 6 });
+                }
+              }}
+              className="neon-btn success-btn"
+              style={{ width: '100%', fontSize: '10px', padding: '6px' }}
+            >
+              Continuer
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   /**
    * Renders the interactive component in the center of the board.
@@ -308,6 +593,10 @@ function App() {
       }
 
       // Unowned Bar purchase challenge
+      if (activeBarScenario !== undefined) {
+        return renderBarScenarioUI(activeBarScenario);
+      }
+
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <Flame size={24} style={{ color: landedTile.color }} />

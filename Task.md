@@ -357,3 +357,25 @@
     - [x] Vérification des imports : Imports propres dans les fichiers de test.
     - [x] Vérification de la syntaxe : Syntaxe de test correcte.
     - [x] Test unitaire (jest DOM) : Exécuter la suite complète et s'assurer que tous les tests passent à 100%.
+
+## Phase 18 : Scénarios Interactifs Aléatoires pour les Bars du Plateau
+* **Définition et Typage des Nouveaux Scénarios**
+    - [x] Implémentation : Mettre à jour `src/types.ts` avec les nouveaux champs de scénarios de bar (`activeBarScenario` de 1 à 12, `barScenarioTargetIds`, `barScenarioWinnerId`, `barScenarioStage`, etc.). Mettre à jour `src/gameData.ts` pour stocker les 12 scénarios dans une structure de données.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les champs optionnels d'état et la structure de données des scénarios.
+    - [x] Vérification des imports : Pas d'imports cassés dans types ou gameData.
+    - [x] Vérification de la syntaxe : S'assurer du bon typage TS.
+    - [x] Test unitaire (jest DOM) : Valider la structure de données des scénarios de bars.
+
+* **Logique Interactive dans useGameState**
+    - [x] Implémentation : Mettre à jour `src/hooks/useGameState.ts` pour sélectionner aléatoirement l'un des 12 scénarios lors de l'arrivée sur un bar non possédé (à la fin de `moveOneStep`). Ajouter `resolveBarScenario` pour traiter les actions et pénalités de chaque scénario (recul de 3 cases, disqualification, gorgées aléatoires, devinette).
+    - [x] Documentation (JSDoc et commentaires) : JSDoc expliquant la logique du choix aléatoire et le traitement de chaque scénario interactif.
+    - [x] Vérification des imports : Imports corrects pour les types.
+    - [x] Vérification de la syntaxe : S'assurer de la correction des fonctions.
+    - [x] Test unitaire (jest DOM) : Écrire un test Playwright simulant plusieurs scénarios de bar interactifs aléatoires.
+
+* **Composants d'Alignement et UI dans App.tsx**
+    - [x] Implémentation : Modifier `renderCenter` dans `src/App.tsx` pour afficher l'interface spécifique du scénario aléatoire actif lors de l'achat d'un bar non possédé.
+    - [x] Documentation (JSDoc et commentaires) : Documenter le rendu conditionnel de l'UI.
+    - [x] Vérification des imports : Nettoyer les imports inutilisés.
+    - [x] Vérification de la syntaxe : S'assurer que le JSX compile correctement.
+    - [x] Test unitaire (jest DOM) : S'assurer que les boutons du centre s'affichent et réagissent correctement.

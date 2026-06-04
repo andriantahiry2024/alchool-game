@@ -158,12 +158,40 @@ export function useGameState() {
 
             let nextScreen: GameState['activeScreen'] = 'board';
             let activeCard = prev.activeCard;
+            let activeBarScenario: number | undefined = undefined;
+            let barScenarioTargetIds: string[] = [];
+            let barScenarioWinnerId = '';
+            let barScenarioStage: GameState['barScenarioStage'] = undefined;
 
             if (landedTile.type === 'card') {
               nextScreen = 'card';
               activeCard = getRandomCard();
             } else if (landedTile.type === 'bottle') {
               nextScreen = 'bottle';
+            } else if (landedTile.type === 'bar' && !landedTile.ownerId) {
+              activeBarScenario = Math.floor(Math.random() * 12) + 1; // 1 to 12
+              const otherPlayers = players.filter((pl) => pl.id !== p.id);
+
+              if (activeBarScenario === 4) { // Target player boit 4
+                const randIdx = Math.floor(Math.random() * players.length);
+                barScenarioTargetIds = [players[randIdx].id];
+              } else if (activeBarScenario === 7) { // 2 players bisou front
+                if (players.length >= 2) {
+                  const shuffled = [...players].sort(() => 0.5 - Math.random());
+                  barScenarioTargetIds = [shuffled[0].id, shuffled[1].id];
+                } else {
+                  barScenarioTargetIds = [p.id];
+                }
+              } else if (activeBarScenario === 12) { // 3 players devinette
+                const shuffledOthers = [...otherPlayers].sort(() => 0.5 - Math.random());
+                const targets = shuffledOthers.slice(0, 3);
+                barScenarioTargetIds = targets.map((t) => t.id);
+                if (targets.length > 0) {
+                  const winnerIdx = Math.floor(Math.random() * targets.length);
+                  barScenarioWinnerId = targets[winnerIdx].id;
+                }
+                barScenarioStage = 'guess';
+              }
             }
 
             return {
@@ -172,6 +200,10 @@ export function useGameState() {
               isMoving: false,
               activeScreen: nextScreen,
               activeCard,
+              activeBarScenario,
+              barScenarioTargetIds,
+              barScenarioWinnerId,
+              barScenarioStage,
               logMessages: [log, ...prev.logMessages].slice(0, 15),
             };
           });
@@ -335,6 +367,157 @@ export function useGameState() {
         players,
         tiles,
         logMessages: [log, ...prev.logMessages].slice(0, 15),
+      };
+    });
+  };
+
+  // Part 1 of resolveBarScenario: Handles success, fail, youngest_success, youngest_fail
+  const resolveBarScenario = (
+    action: 'success' | 'fail' | 'recule3' | 'youngest_fail' | 'youngest_success' | 'cul_sec_others' | 'cul_sec_all' | 'guess' | 'laugh',
+    payload?: any
+  ) => {
+    setState((prev) => {
+      const players = [...prev.players];
+      const currentPlayerIndex = prev.currentPlayerIndex;
+      const currentPlayer = { ...players[currentPlayerIndex] };
+      const tiles = [...prev.tiles];
+      const currentTile = { ...tiles[currentPlayer.position] };
+      let log = '';
+      let nextIndex = currentPlayerIndex;
+      let barScenarioStage = prev.barScenarioStage;
+
+      const penalty = currentTile.price || 3;
+
+      if (action === 'success') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        log = `🏢 ${currentPlayer.name} réussit le défi et achète ${currentTile.name} !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'fail') {
+        const actualPenalty = payload?.penalty !== undefined ? payload.penalty : penalty;
+        currentPlayer.sipsCount += actualPenalty;
+        log = `🍺 ${currentPlayer.name} rate le défi et boit ${actualPenalty} gorgée(s) !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'youngest_success') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        const youngestId = payload?.youngestId;
+        const youngestPlayer = players.find((pl) => pl.id === youngestId);
+        if (youngestPlayer) {
+          const yIdx = players.findIndex((pl) => pl.id === youngestId);
+          players[yIdx] = { ...youngestPlayer, sipsCount: youngestPlayer.sipsCount + 6 };
+          log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Cul Sec 🍺 pour le plus jeune (${youngestPlayer.name}) !`;
+        }
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'youngest_fail') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        const youngestId = payload?.youngestId;
+        const youngestPlayer = players.find((pl) => pl.id === youngestId);
+        if (youngestPlayer) {
+          const yIdx = players.findIndex((pl) => pl.id === youngestId);
+          players[yIdx] = { ...youngestPlayer, position: 0 };
+          log = `🚨 Le plus jeune (${youngestPlayer.name}) a refusé et retourne au DÉPART ! ${currentPlayer.name} achète ${currentTile.name}.`;
+        }
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'cul_sec_others') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        players.forEach((pl, idx) => {
+          if (idx !== currentPlayerIndex) {
+            players[idx] = { ...pl, sipsCount: pl.sipsCount + 6 };
+          }
+        });
+        log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Tous les autres boivent un Cul Sec 🍻 !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'cul_sec_all') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        players.forEach((pl, idx) => {
+          players[idx] = { ...pl, sipsCount: pl.sipsCount + 6 };
+        });
+        log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Tout le monde boit un Cul Sec 🍻 !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'recule3') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        players.forEach((pl, idx) => {
+          if (idx !== currentPlayerIndex) {
+            const oldPos = pl.position;
+            const newPos = (oldPos - 3 + 32) % 32;
+            players[idx] = { ...pl, position: newPos };
+          }
+        });
+        log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! Tous les autres reculent de 3 cases ⬅️ !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'laugh') {
+        currentTile.ownerId = currentPlayer.id;
+        currentTile.level = 1;
+        currentPlayer.challengesCompleted += 1;
+        const laughIds: string[] = payload?.laughIds || [];
+        laughIds.forEach((id) => {
+          const idx = players.findIndex((pl) => pl.id === id);
+          if (idx !== -1) {
+            players[idx] = { ...players[idx], sipsCount: players[idx].sipsCount + 6 };
+          }
+        });
+        log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Les rieurs boivent un Cul Sec 🍻 !`;
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'guess') {
+        const guessId = payload?.guessId;
+        const correct = guessId === prev.barScenarioWinnerId;
+        barScenarioStage = 'result';
+        if (correct) {
+          log = `🔍 ${currentPlayer.name} devine juste ! C'est bien ${players.find(pl => pl.id === guessId)?.name} qui avait l'objet.`;
+        } else {
+          log = `🔍 ${currentPlayer.name} se trompe ! L'objet était chez ${players.find(pl => pl.id === prev.barScenarioWinnerId)?.name}.`;
+        }
+        return {
+          ...prev,
+          barScenarioStage,
+          logMessages: [log, ...prev.logMessages].slice(0, 15),
+        };
+      }
+
+      tiles[currentTile.id] = currentTile;
+      players[currentPlayerIndex] = currentPlayer;
+
+      let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
+
+      const finalPlayers = players.map((pl, idx) => {
+        if (idx === nextIndex && pl.isPrisoner) {
+          const updated = { ...pl };
+          if (updated.prisonTurns >= 1) {
+            updated.isPrisoner = false;
+            updated.prisonTurns = 0;
+            nextLog = `🔓 ${pl.name} a fini de cuver et sort !`;
+          } else {
+            updated.prisonTurns += 1;
+            nextLog = `🚨 ${pl.name} est en cellule et passe son tour !`;
+          }
+          return updated;
+        }
+        return pl;
+      });
+
+      return {
+        ...prev,
+        players: finalPlayers,
+        tiles,
+        currentPlayerIndex: nextIndex,
+        diceValue: null,
+        activeScreen: 'board',
+        activeBarScenario: undefined,
+        barScenarioTargetIds: undefined,
+        barScenarioWinnerId: undefined,
+        barScenarioStage: undefined,
+        logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
       };
     });
   };
@@ -689,6 +872,7 @@ export function useGameState() {
     resolveCard,
     resolveBottle,
     resolveBar,
+    resolveBarScenario,
     payJailFine,
     nextTurn,
     sendToJail,

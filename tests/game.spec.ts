@@ -90,15 +90,22 @@ test.describe('Alcooly Full Game Loop E2E', () => {
       } else if (await page.locator('.success-btn').first().isVisible()) {
         await page.locator('.success-btn').first().click();
       }
+    } else if (await page.locator('.neon-btn:has-text("Deviner")').first().isVisible()) {
+      // Landed on Devinette: Make guess and continue
+      await page.locator('.neon-btn:has-text("Deviner")').first().click();
+      await page.waitForTimeout(600);
+      if (await page.locator('.success-btn').isVisible()) {
+        await page.locator('.success-btn').click();
+      }
     } else if (await page.locator('.fail-btn').first().isVisible()) {
-      // Landed on Tax or flashé Radar or other penalty: pay it
+      // Landed on Tax or other penalty/choice: pay it
       await page.locator('.fail-btn').first().click();
-    } else if (await page.locator('.success-btn').isVisible()) {
-      // Landed on a Bar or safe Radar: Complete challenge or continue
-      await page.locator('.success-btn').click();
-    } else if (await page.locator('.red-btn').isVisible()) {
+    } else if (await page.locator('.success-btn').first().isVisible()) {
+      // Landed on a Bar or safe tile: Complete challenge/continue
+      await page.locator('.success-btn').first().click();
+    } else if (await page.locator('.red-btn').first().isVisible()) {
       // Landed on cell / jail: Complete warning
-      await page.locator('.red-btn').click();
+      await page.locator('.red-btn').first().click();
     } else if (await page.locator('.neon-btn:has-text("Suivant")').isVisible()) {
       // Landed on tax, depart, or general event: click next
       await page.locator('.neon-btn:has-text("Suivant")').click();

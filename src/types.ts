@@ -83,4 +83,8 @@ export interface GameState {
   diceValue: number | null;
   logMessages: string[];
   isMoving?: boolean;
+  activeBarScenario?: number; // Random scenario index (1 to 12)
+  barScenarioTargetIds?: string[]; // Player IDs targeted by the active scenario
+  barScenarioWinnerId?: string; // Winner or correct target player ID for the scenario
+  barScenarioStage?: 'guess' | 'result'; // Stage for interactive scenarios (like Scenario 12)
 }

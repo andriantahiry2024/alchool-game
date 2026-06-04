@@ -256,3 +256,24 @@ export function getBarLevelLabel(level: number): string {
   if (level === 3) return 'Cul Sec !';
   return `Niveau ${level}`;
 }
+
+export interface BarScenario {
+  id: number;
+  title: string;
+  description: string;
+}
+
+export const BAR_SCENARIOS: BarScenario[] = [
+  { id: 1, title: "Scénario des Couples 💋", description: "Les personnes en couple s'embrassent pendant 5 secondes, sinon les couples boivent un cul sec chacun !" },
+  { id: 2, title: "Le Plus Jeune 👶", description: "Le plus jeune d'entre vous boit un cul sec, sinon il est disqualifié et retourne à la case départ." },
+  { id: 3, title: "Couleur de Slip 🩲", description: "Tout le monde montre la couleur du bout de son slip !" },
+  { id: 4, title: "Cible Aléatoire 🎯", description: "Un joueur aléatoire indiqué par l'application doit boire 4 gorgées !" },
+  { id: 5, title: "Écartement des Doigts ✌️", description: "Écartez votre index et votre majeur. Tout le monde boit, sauf celui qui a l'écartement le plus grand." },
+  { id: 6, title: "Le Coude Improbable 👅", description: "Tout le monde essaie de lécher son coude. Si quelqu'un y parvient, les autres boivent cul sec, sinon tout le monde boit cul sec !" },
+  { id: 7, title: "Bisou sur le Front 😘", description: "L'application choisit deux joueurs au hasard qui doivent se faire un bisou sur le front." },
+  { id: 8, title: "Duel du Regard 👀", description: "Tout le monde se regarde dans les yeux. Les trois premiers à rire boivent un cul sec !" },
+  { id: 9, title: "Marche Arrière Collective ⬅️", description: "Tout le monde recule de 3 cases sauf le joueur actif !" },
+  { id: 10, title: "Le Silence est d'Or 🤫", description: "Tout le monde reste muet durant toute la partie jusqu'à ce que quelqu'un rit. Le premier qui rit boit cul sec !" },
+  { id: 11, title: "Honte de Soirée 🗣️", description: "Le joueur actif doit raconter sa pire honte de soirée, sinon il boit cul sec !" },
+  { id: 12, title: "La Devinette de l'Objet 🔍", description: "Trois joueurs cachent un objet dans leur main. Le joueur actif devine qui l'a. S'il a raison, les 3 boivent cul sec, sinon l'actif boit cul sec." }
+];
