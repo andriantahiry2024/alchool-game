@@ -175,4 +175,70 @@ test.describe('Alcooly Full Game Loop E2E', () => {
     // Verify 2 players are now added
     await expect(page.locator('.player-badge')).toHaveCount(2);
   });
+
+  test('should trigger coeur power transfer and handle target decision', async ({ page }) => {
+    await page.goto('/');
+
+    // Inscrire les joueurs normalement pour peupler les cases et le plateau
+    await page.fill('.setup-input', 'Alice');
+    await page.click('.add-btn');
+    await page.fill('.setup-input', 'Bob');
+    await page.click('.add-btn');
+    await page.click('.start-btn');
+
+    // Révéler les cartes fétiches
+    const revealCards = page.locator('.reveal-card-3d');
+    await revealCards.nth(0).click();
+    await revealCards.nth(1).click();
+    await page.click('.reveal-confirm-btn');
+
+    // Modifier le state peuplé dans localStorage
+    await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        state.players = [
+          {
+            ...state.players[0],
+            name: 'Alice',
+            position: 21, // Taxe Alcool (index 21)
+            powerUsed: false,
+            card: { suit: 'coeur', cardValue: 'As' }
+          },
+          {
+            ...state.players[1],
+            name: 'Bob',
+            position: 5,
+            powerUsed: false,
+            card: { suit: 'pique', cardValue: 'As' }
+          }
+        ];
+        state.currentPlayerIndex = 0;
+        state.diceValue = 4;
+        state.activeScreen = 'board';
+        localStorage.setItem('alcooly_game_state', JSON.stringify(state));
+      }
+    });
+
+    // Recharger la page pour charger l'état mocké
+    await page.reload();
+
+    // Vérifier que nous sommes sur la case avec le bouton de pouvoir visible
+    const heartPowerBtn = page.locator('text=Flèche de Cœur').first();
+    await expect(heartPowerBtn).toBeVisible();
+
+    // Cliquer sur le bouton cible "Bob" pour transférer
+    await page.locator('button:has-text("Bob")').first().click();
+
+    // Vérifier que la modale overlay de transfert est visible
+    const transferModal = page.locator('#transfer-modal');
+    await expect(transferModal).toBeVisible();
+    await expect(transferModal).toContainText('Alice veut transférer');
+
+    // Cliquer sur "Refuser & Retour au DÉPART"
+    await page.locator('#refuse-transfer-btn').click();
+
+    // Vérifier que la modale a disparu
+    await expect(transferModal).not.toBeVisible();
+  });
 });

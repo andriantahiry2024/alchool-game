@@ -397,4 +397,77 @@
     - [x] Vérification de la syntaxe : S'assurer que les valeurs CSS sont valides.
     - [x] Test unitaire (jest DOM) : Relancer et vérifier que tous les tests Playwright existants passent toujours avec succès.
 
+## Phase 21 : Agrandissement Majeur des Textes et Boutons du Centre
+* **Augmentation Importante des Font-Sizes**
+    - [x] Implémentation : Augmenter encore plus la taille de police (h3 à `28px`, p à `22px`, boutons à `16px` dans `src/index.css`).
+    - [x] Documentation (JSDoc et commentaires) : Expliquer la gestion du défilement et de la hauteur sur les petits viewports.
+    - [x] Vérification des imports : S'assurer que les imports restent valides.
+    - [x] Vérification de la syntaxe : S'assurer du bon format CSS.
+    - [x] Test unitaire (jest DOM) : Valider que tous les tests Playwright s'exécutent avec succès.
+
+## Phase 22 : Surcharges CSS avec !important pour Overrider les Inline Styles
+* **Surcharge des Font-Sizes Centraux**
+    - [x] Implémentation : Ajouter `!important` sur les tailles de police de `.center-action-card h3`, `.center-action-card p`, `.center-action-card button` et `.center-action-card div` dans `src/index.css`. Modifier `.center-actions-row` pour utiliser `flex-direction: column !important` afin d'empiler tous les boutons verticalement de haut en bas.
+    - [x] Documentation (JSDoc et commentaires) : Commenter l'utilisation de `!important` et le changement d'alignement flexbox pour les boutons.
+    - [x] Vérification des imports : S'assurer que le fichier CSS compile sans problème d'import.
+    - [x] Vérification de la syntaxe : S'assurer que les valeurs CSS sont valides.
+    - [x] Test unitaire (jest DOM) : Relancer et vérifier que tous les tests Playwright s'exécutent avec succès.
+
+## Phase 23 : Alignement Vertical et Agrandissement Global de Tous les Boutons du Centre
+* **Empilement Vertical et Taille des Boutons**
+    - [x] Implémentation : Dans `src/index.css`, cibler globalement `.center-action-card button`, `.center-action-card .neon-btn` pour leur appliquer `font-size: 18px !important` et `padding: 14px 10px !important`.
+    - [x] Implémentation : Dans `src/App.tsx`, modifier le conteneur des deux boutons de choix de joueur du Défi en Duo (ligne 524) et le conteneur des cibles de la Flèche de Cœur (ligne 79) en conteneur flex vertical (`flexDirection: 'column'`) pour empiler tous les boutons de choix verticalement de haut en bas.
+    - [x] Documentation (JSDoc et commentaires) : Expliquer le passage en affichage vertical des boutons et l'agrandissement général pour l'ergonomie mobile.
+    - [x] Vérification des imports : Aucun import cassé.
+    - [x] Vérification de la syntaxe : S'assurer de la bonne syntaxe TypeScript et CSS.
+    - [ ] Test unitaire (jest DOM) : Relancer et vérifier que tous les tests Playwright s'exécutent avec succès.
+
+## Phase 24 : Agrandissement des Cartes Mystères (Modal Overlay)
+* **Agrandissement de la Carte et des Textes**
+    - [x] Implémentation : Dans `src/index.css`, augmenter la taille de `.card-3d` (largeur de `240px` à `280px`, hauteur de `310px` à `360px`) et les polices des éléments internes (`.card-category-badge` à `14px`, `.card-player-target` à `16px !important`, `.card-title` à `24px`, `.card-text` à `18px`, `.card-penalty` à `16px`). Agrandir les boutons d'action de carte (`.card-actions button`) à `16px` avec un padding de `12px`.
+    - [x] Documentation (JSDoc et commentaires) : Commenter les modifications de design system pour le tiroir de cartes.
+    - [x] Vérification des imports : Aucun import cassé.
+    - [x] Vérification de la syntaxe : S'assurer du bon format CSS.
+    - [ ] Test unitaire (jest DOM) : Relancer et vérifier que tous les tests Playwright s'exécutent avec succès.
+
+## Phase 25 : Agrandissement Général et Ergonomie de tous les boutons
+* **Agrandissement des Boutons et Contrôles**
+    - [x] Implémentation
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
+## Phase 26 : Choix Interactif de Transfert de Gorgées (Flèche de Cœur)
+* **Logique de Transfert et Modale de Décision**
+    - [x] Implémentation
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
+## Phase 27 : Icônes Visuelles pour les Cases du Plateau (Sans Texte)
+* **Intégration des Icônes et Nettoyage des Textes**
+    - [x] Implémentation
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
+## Phase 28 : Colorisation Blanche Initiale et par Appartenance
+* **Colorisation Blanche Initiale et par Appartenance**
+    - [x] Implémentation
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
+## Phase 29 : Correction de la troncature des cartes et style des cellules
+* **Correction Troncature et Style des Cellules**
+    - [x] Implémentation : Rendre la bordure des cases non possédées complètement transparente (fond noir uni avec l'icône blanc pâle au centre), et rendre le texte des cartes mystères scrollable.
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
 

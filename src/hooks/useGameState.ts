@@ -66,6 +66,7 @@ const INITIAL_STATE: GameState = {
   logMessages: ['Bienvenue sur Alcooly ! configurez la partie.'],
   usedBarScenarios: [],
   usedCardIds: [],
+  pendingTransfer: null,
 };
 
 /**
@@ -665,18 +666,19 @@ export function useGameState() {
         log += `🛡️ Bouclier d'Acier ! Pénalité annulée.`;
         nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
         nextScreen = 'board';
-        diceValue = null;
       } else if (powerType === 'coeur' && targetId && penaltyAmount) {
-        const targetIdx = players.findIndex((p) => p.id === targetId);
-        if (targetIdx !== -1) {
-          const target = { ...players[targetIdx] };
-          target.sipsCount += penaltyAmount;
-          players[targetIdx] = target;
-          log += `💘 Flèche de Cupidon ! ${penaltyAmount} gorgées transférées à ${target.name} !`;
-        }
-        nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
-        nextScreen = 'board';
-        diceValue = null;
+        const target = players.find((p) => p.id === targetId);
+        log += `💘 Flèche de Cœur envoyée à ${target ? target.name : 'Adversaire'} (${penaltyAmount} gorgées) !`;
+        return {
+          ...prev,
+          players,
+          pendingTransfer: {
+            fromId: activePlayer.id,
+            toId: targetId,
+            penalty: penaltyAmount,
+          },
+          logMessages: [log, ...prev.logMessages].slice(0, 15),
+        };
       } else if (powerType === 'carreau') {
         log += `🎲 Turbo Dé ! Relance autorisée.`;
         diceValue = null;
@@ -905,6 +907,107 @@ export function useGameState() {
     });
   };
 
+  /**
+   * Accepts the pending sip transfer.
+   * Target player drinks the designated sips, pending state is cleared, and turn advances to the next player.
+   */
+  const acceptTransfer = () => {
+    setState((prev) => {
+      if (!prev.pendingTransfer) return prev;
+      const { toId, penalty } = prev.pendingTransfer;
+      const players = prev.players.map((p) => {
+        if (p.id === toId) {
+          return { ...p, sipsCount: p.sipsCount + penalty };
+        }
+        return p;
+      });
+
+      const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
+      const nextPlayer = players[nextIndex];
+      const log = `💘 ${players.find((p) => p.id === toId)?.name} a ACCEPTÉ le transfert et boit ${penalty} ${penalty > 1 ? 'gorgées' : 'gorgée'}.`;
+      let nextLog = `C'est au tour de ${nextPlayer.name}.`;
+
+      const finalPlayers = players.map((p, idx) => {
+        if (idx === nextIndex && p.isPrisoner) {
+          const updated = { ...p };
+          if (updated.prisonTurns >= 1) {
+            updated.isPrisoner = false;
+            updated.prisonTurns = 0;
+            nextLog = `🔓 ${p.name} a fini de cuver et sort de dégrisement !`;
+          } else {
+            updated.prisonTurns += 1;
+            nextLog = `🚨 ${p.name} est en cellule de dégrisement et passe son tour (ou paye sa caution) !`;
+          }
+          return updated;
+        }
+        return p;
+      });
+
+      return {
+        ...prev,
+        players: finalPlayers,
+        currentPlayerIndex: nextIndex,
+        diceValue: null,
+        selectedBottleTargetId: null,
+        activeDuoChallenge: null,
+        activeScreen: 'board',
+        pendingTransfer: null,
+        logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
+      };
+    });
+  };
+
+  /**
+   * Refuses the pending sip transfer.
+   * Target player refuses to drink but is sent back to the starting tile (position 0).
+   * Pending state is cleared, and turn advances to the next player.
+   */
+  const refuseTransfer = () => {
+    setState((prev) => {
+      if (!prev.pendingTransfer) return prev;
+      const { toId } = prev.pendingTransfer;
+      const players = prev.players.map((p) => {
+        if (p.id === toId) {
+          return { ...p, position: 0 };
+        }
+        return p;
+      });
+
+      const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
+      const nextPlayer = players[nextIndex];
+      const log = `❌ ${players.find((p) => p.id === toId)?.name} a REFUSÉ le transfert et retourne à la case DÉPART 🏁 !`;
+      let nextLog = `C'est au tour de ${nextPlayer.name}.`;
+
+      const finalPlayers = players.map((p, idx) => {
+        if (idx === nextIndex && p.isPrisoner) {
+          const updated = { ...p };
+          if (updated.prisonTurns >= 1) {
+            updated.isPrisoner = false;
+            updated.prisonTurns = 0;
+            nextLog = `🔓 ${p.name} a fini de cuver et sort de dégrisement !`;
+          } else {
+            updated.prisonTurns += 1;
+            nextLog = `🚨 ${p.name} est en cellule de dégrisement et passe son tour (ou paye sa caution) !`;
+          }
+          return updated;
+        }
+        return p;
+      });
+
+      return {
+        ...prev,
+        players: finalPlayers,
+        currentPlayerIndex: nextIndex,
+        diceValue: null,
+        selectedBottleTargetId: null,
+        activeDuoChallenge: null,
+        activeScreen: 'board',
+        pendingTransfer: null,
+        logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
+      };
+    });
+  };
+
   // Resets the game state and clears localStorage
   const resetGame = () => {
     if (typeof window !== 'undefined') {
@@ -931,6 +1034,8 @@ export function useGameState() {
     resolveDuoPenalty,
     resolveTourneeGenerale,
     selectTargetPlayer,
+    acceptTransfer,
+    refuseTransfer,
     resetGame,
   };
 }

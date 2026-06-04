@@ -85,7 +85,7 @@ export const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
             className="setup-input"
           />
           {error && (
-            <div className="setup-error" style={{ color: '#ff3333', fontSize: '11px', marginTop: '4px', textAlign: 'left', paddingLeft: '8px', textShadow: '0 0 5px rgba(255, 51, 51, 0.4)' }}>
+            <div className="setup-error" style={{ color: '#ff3333', fontSize: '14px', marginTop: '4px', textAlign: 'left', paddingLeft: '8px', textShadow: '0 0 5px rgba(255, 51, 51, 0.4)' }}>
               ⚠️ {error}
             </div>
           )}
@@ -111,7 +111,7 @@ export const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
           <div key={p.id} className="player-badge" style={{ borderColor: p.color, boxShadow: `0 0 8px ${p.color}` }}>
             <span style={{ color: p.color }}>{p.name}</span>
             <button onClick={() => handleRemovePlayer(p.id)} className="delete-btn">
-              <Trash2 size={16} />
+              <Trash2 size={20} />
             </button>
           </div>
         ))}

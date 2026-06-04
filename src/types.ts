@@ -89,5 +89,10 @@ export interface GameState {
   barScenarioStage?: 'guess' | 'result'; // Stage for interactive scenarios (like Scenario 12)
   usedBarScenarios?: number[]; // Scenario indices that were already played
   usedCardIds?: string[]; // Mystery card IDs that were already drawn
+  pendingTransfer?: {
+    fromId: string;
+    toId: string;
+    penalty: number;
+  } | null;
 }
 

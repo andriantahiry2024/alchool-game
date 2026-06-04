@@ -1,6 +1,19 @@
 import React from 'react';
 import type { Tile, Player } from '../types';
-import { getBarLevelLabel } from '../gameData';
+import { 
+  Flag, 
+  Beer, 
+  HelpCircle, 
+  RotateCw, 
+  Lock, 
+  AlertTriangle, 
+  FlaskConical, 
+  Camera, 
+  Lightbulb, 
+  DollarSign, 
+  Wine, 
+  Smile 
+} from 'lucide-react';
 
 interface BoardProps {
   tiles: Tile[];
@@ -50,12 +63,65 @@ export const getGridPosition = (id: number) => {
  * active gameplay components in the center.
  */
 export const Board: React.FC<BoardProps> = ({ tiles, players, currentPlayerIndex, centerComponent }) => {
+  /**
+   * Returns the JSX Element for the tile's icon, styled with the given dynamic color.
+   *
+   * @param tile - The Tile object
+   * @param color - The dynamic color (owner's color or white fallback)
+   * @param isOwned - Whether the tile is owned by a player
+   * @returns The lucide-react icon component
+   */
+  const getTileIcon = (tile: Tile, color: string, isOwned: boolean) => {
+    const name = tile.name.toLowerCase();
+    const type = tile.type;
+    const iconClass = isOwned ? 'tile-icon owned-glow' : 'tile-icon';
+
+    if (type === 'start') {
+      return <Flag size={20} className={iconClass} style={{ color }} />;
+    }
+    if (name.includes('alcootest')) {
+      return <FlaskConical size={18} className={iconClass} style={{ color }} />;
+    }
+    if (name.includes('radar')) {
+      return <Camera size={18} className={iconClass} style={{ color }} />;
+    }
+    if (name.includes('énigme')) {
+      return <Lightbulb size={18} className={iconClass} style={{ color }} />;
+    }
+    if (name.includes('tournée')) {
+      return <Wine size={18} className={iconClass} style={{ color }} />;
+    }
+    if (type === 'goto_prison') {
+      return <AlertTriangle size={18} className={iconClass} style={{ color }} />;
+    }
+    if (type === 'prison') {
+      return <Lock size={18} className={iconClass} style={{ color }} />;
+    }
+    if (type === 'tax') {
+      return <DollarSign size={18} className={iconClass} style={{ color }} />;
+    }
+    if (type === 'bottle') {
+      return <RotateCw size={18} className={iconClass} style={{ color }} />;
+    }
+    if (type === 'card') {
+      return <HelpCircle size={18} className={iconClass} style={{ color }} />;
+    }
+    if (type === 'chill') {
+      return <Smile size={18} className={iconClass} style={{ color }} />;
+    }
+    if (type === 'bar') {
+      return <Beer size={18} className={iconClass} style={{ color }} />;
+    }
+    return null;
+  };
+
   return (
     <div className="board-grid">
       {tiles.map((tile) => {
         const gridPos = getGridPosition(tile.id);
         const tilePlayers = players.filter((p) => p.position === tile.id);
         const owner = tile.ownerId ? players.find((p) => p.id === tile.ownerId) : null;
+        const color = owner ? owner.color : '#cccccc';
 
         return (
           <div
@@ -63,18 +129,14 @@ export const Board: React.FC<BoardProps> = ({ tiles, players, currentPlayerIndex
             className={`board-tile tile-${tile.type}`}
             style={{
               ...gridPos,
-              borderColor: tile.color,
+              borderColor: owner ? owner.color : 'transparent',
               boxShadow: owner ? `inset 0 0 10px ${owner.color}, 0 0 8px ${owner.color}` : 'none',
             }}
+            title={`${tile.name} ${tile.description ? `- ${tile.description}` : ''}`}
           >
-            <div className="tile-header" style={{ color: tile.color }}>
-              {tile.name}
+            <div className="tile-icon-container">
+              {getTileIcon(tile, color, !!owner)}
             </div>
-            {tile.type === 'bar' && (
-              <div className="tile-sub">
-                {owner ? getBarLevelLabel(tile.level || 1) : `${tile.price} Gor.`}
-              </div>
-            )}
             
             <div className="tile-tokens">
               {tilePlayers.map((p) => (

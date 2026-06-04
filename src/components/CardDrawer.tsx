@@ -89,7 +89,9 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
             Pour {playerName}
           </div>
           <h2 className="card-title">{card.title}</h2>
-          <p className="card-text">{card.text}</p>
+          <div className="card-text-container">
+            <p className="card-text">{card.text}</p>
+          </div>
           <div className="card-penalty" style={{ color: suitColor }}>
             Pénalité : {card.penalty} {card.penalty > 1 ? 'gorgées' : 'gorgée'} 🍺
           </div>
