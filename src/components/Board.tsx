@@ -10,27 +10,32 @@ interface BoardProps {
 }
 
 /**
- * Calculates the 5x5 grid position (row, col) for a given tile ID (0 to 15).
+ * Calculates the 9x9 grid position (row, col) for a given tile ID (0 to 31).
+ * 32 tiles are placed around the perimeter of a 9x9 grid:
+ * - Top row:    id 0–8   → row=0, col=id
+ * - Right col:  id 9–15  → col=8, row=id-8
+ * - Bottom row: id 16–24 → row=8, col=8-(id-16)
+ * - Left col:   id 25–31 → col=0, row=8-(id-24)
  *
- * @param id - The tile ID (0 to 15)
+ * @param id - The tile ID (0 to 31)
  * @returns An object with gridRow and gridColumn values (1-indexed for CSS Grid)
  */
 export const getGridPosition = (id: number) => {
   let row = 0;
   let col = 0;
 
-  if (id >= 0 && id <= 4) {
+  if (id >= 0 && id <= 8) {
     row = 0;
     col = id;
-  } else if (id >= 5 && id <= 7) {
-    col = 4;
-    row = id - 4;
-  } else if (id >= 8 && id <= 12) {
-    row = 4;
-    col = 4 - (id - 8);
-  } else if (id >= 13 && id <= 15) {
+  } else if (id >= 9 && id <= 15) {
+    col = 8;
+    row = id - 8;
+  } else if (id >= 16 && id <= 24) {
+    row = 8;
+    col = 8 - (id - 16);
+  } else if (id >= 25 && id <= 31) {
     col = 0;
-    row = 4 - (id - 12);
+    row = 8 - (id - 24);
   }
 
   // CSS grid lines are 1-indexed, so we add 1
@@ -41,7 +46,7 @@ export const getGridPosition = (id: number) => {
 };
 
 /**
- * Interactive 5x5 grid board. Displays tiles around the perimeter and renders
+ * Interactive 9x9 grid board. Displays 32 tiles around the perimeter and renders
  * active gameplay components in the center.
  */
 export const Board: React.FC<BoardProps> = ({ tiles, players, currentPlayerIndex, centerComponent }) => {

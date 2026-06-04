@@ -36,10 +36,10 @@ export type TileType =
   | 'chill';
 
 /**
- * Interface representing a tile on the 16-space board.
+ * Interface representing a tile on the 32-space board.
  */
 export interface Tile {
-  id: number; // 0 to 15
+  id: number; // 0 to 31
   name: string;
   type: TileType;
   description: string;
@@ -56,7 +56,7 @@ export interface Player {
   id: string;
   name: string;
   color: string; // Neon hex code or class name
-  position: number; // Index of the tile (0 to 15)
+  position: number; // Index of the tile (0 to 31)
   sipsCount: number; // Number of sips taken
   challengesCompleted: number; // Count of successful challenges
   isPrisoner: boolean;
@@ -82,4 +82,5 @@ export interface GameState {
   activeDuoChallenge: string | null;
   diceValue: number | null;
   logMessages: string[];
+  isMoving?: boolean;
 }

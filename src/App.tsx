@@ -99,7 +99,7 @@ function App() {
   }
 
   if (activeScreen === 'gameover') {
-    const winner = players.find((p) => (p.laps || 0) >= 3) || players[0];
+    const winner = players.find((p) => (p.laps || 0) >= 1) || players[0];
     const losers = players.filter((p) => p.id !== winner.id);
     
     return (
@@ -140,6 +140,19 @@ function App() {
    */
   const renderCenter = () => {
     const landedTile = tiles[currentPlayer.position];
+
+    // 0. Movement animation in progress — show dice + progress
+    if (state.isMoving) {
+      return (
+        <div className="center-roll-view">
+          <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>🎲 <span style={{ color: currentPlayer.color, textShadow: `0 0 12px ${currentPlayer.color}` }}>{diceValue}</span></h2>
+          <p style={{ fontSize: '12px', opacity: 0.9 }}>{currentPlayer.name} se déplace...</p>
+          <div style={{ width: '60%', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.1)', marginTop: '12px', overflow: 'hidden' }}>
+            <div className="moving-progress-bar" style={{ height: '100%', borderRadius: '3px', background: `linear-gradient(90deg, ${currentPlayer.color}, #fff)` }} />
+          </div>
+        </div>
+      );
+    }
 
     // 1. Jail state check
     if (currentPlayer.isPrisoner) {
@@ -184,7 +197,7 @@ function App() {
 
     // 4. Duo Bottle Spin challenge resolution / Alcootest result
     if (activeScreen === 'minigame') {
-      if (landedTile.id === 10) {
+      if (landedTile.name.includes('Alcootest')) {
         const isPositive = state.activeDuoChallenge?.includes('POSITIF');
         return (
           <div className="center-action-card" style={{ borderColor: landedTile.color }}>
@@ -251,7 +264,7 @@ function App() {
         <div className="center-roll-view">
           <h2>Tour de <span style={{ color: currentPlayer.color, textShadow: `0 0 10px ${currentPlayer.color}` }}>{currentPlayer.name}</span></h2>
           <div className="player-turn-laps" style={{ fontSize: '11px', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', margin: '4px 0 10px' }}>
-            🏁 Tours complétés : <strong style={{ color: currentPlayer.color }}>{currentPlayer.laps || 0} / 3</strong>
+            🏁 Premier à l'arrivée gagne !
           </div>
           <DiceRoller playerColor={currentPlayer.color} onRollComplete={rollDice} />
         </div>
@@ -323,8 +336,8 @@ function App() {
       );
     }
 
-    // Custom Obstacle render for L'Énigme de l'Apéro (case 6)
-    if (landedTile.id === 6) {
+    // Custom Obstacle render for L'Énigme de l'Apéro (name-based)
+    if (landedTile.name.includes('Énigme')) {
       if (!selectedBottleTargetId) {
         const otherPlayers = players.filter((p) => p.id !== currentPlayer.id);
         return (
@@ -365,7 +378,7 @@ function App() {
         );
       }
     }
-    if (landedTile.id === 10) {
+    if (landedTile.name.includes('Alcootest')) {
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <AlertTriangle size={24} style={{ color: landedTile.color, marginTop: '2px' }} className="pulse" />
@@ -379,8 +392,8 @@ function App() {
       );
     }
 
-    // Custom Obstacle render for Radar de Vitesse (case 3)
-    if (landedTile.id === 3) {
+    // Custom Obstacle render for Radar de Vitesse (name-based)
+    if (landedTile.name.includes('Radar')) {
       const isFlashed = diceValue !== null && diceValue >= 4;
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
@@ -426,7 +439,7 @@ function App() {
               {renderSuperPowerButton(6)}
             </div>
           </div>
-        ) : landedTile.id === 15 ? (
+        ) : landedTile.name.includes('Tournée') ? (
           <div style={{ padding: '4px', border: '1px solid rgba(0, 255, 255, 0.15)', borderRadius: '8px', backgroundColor: 'rgba(0, 255, 255, 0.03)', width: '100%', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <button onClick={() => { playSuccess(); resolveTourneeGenerale(); }} className="neon-btn success-btn" style={{ borderColor: landedTile.color, color: landedTile.color, width: '100%', fontSize: '10px', padding: '4px' }}>
               🍻 Tout le monde boit 1 gorgée
@@ -519,7 +532,7 @@ function App() {
                       <div className="player-score-stats">
                         <span>🍺 {p.sipsCount} Gor.</span>
                         <span>🏆 {p.challengesCompleted} déf.</span>
-                        <span>🏁 {p.laps || 0}/3 trs</span>
+                        <span>🏁 {p.laps || 0}/1 trs</span>
                         <span style={{ color: p.powerUsed ? '#777777' : '#ffea00', textShadow: p.powerUsed ? 'none' : '0 0 5px #ffea00', fontWeight: 600 }}>
                           {p.powerUsed ? '❌ Pouvoir' : '⚡ Pouvoir'}
                         </span>

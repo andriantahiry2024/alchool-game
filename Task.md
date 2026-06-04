@@ -311,6 +311,31 @@
     - [x] Vérification des imports : S'assurer que le service worker est bien servi à la racine.
     - [x] Test unitaire (jest DOM) : Valider que le projet compile et passe les tests Playwright avec le SW actif.
 
+## Phase 16 : Extension du Plateau à 32 Cases, Victoire en 1 Tour et Animation de Déplacement
+
+* **Agrandissement du Plateau à 32 Cases et Grille 9x9**
+    - [x] Implémentation : Modifier `src/gameData.ts` pour définir exactement 32 cases génériques avec des descriptions vides (sauf DÉPART et Cellule/Allez en dégrisement).
+    - [x] Implémentation : Mettre à jour `getGridPosition` dans `src/components/Board.tsx` et `.board-grid` / `.board-center` dans `src/index.css` pour une grille 9x9.
+    - [x] Documentation (JSDoc et commentaires) : Expliquer le positionnement géométrique de la grille 9x9 et la structure des cases génériques.
+    - [x] Vérification des imports : S'assurer que le composant compile.
+    - [x] Vérification de la syntaxe : S'assurer que le CSS compile correctement.
+    - [x] Test unitaire (jest DOM) : Valider les coordonnées renvoyées pour toutes les 32 cases.
+
+* **Logique de Victoire en 1 Tour et Modulos**
+    - [x] Implémentation : Mettre à jour `useGameState.ts` et `App.tsx` pour modifier la victoire à 1 tour complet (`laps >= 1`) et adapter les modulos.
+    - [x] Documentation (JSDoc et commentaires) : Commenter le changement de limite de tours.
+    - [x] Vérification des imports : Vérifier qu'aucun import mort n'est laissé.
+    - [x] Vérification de la syntaxe : Vérifier la cohérence de types TypeScript.
+    - [x] Test unitaire (jest DOM) : Vérifier que le statut de fin de partie s'active correctement après 1 tour.
+
+* **Animation Pas à Pas du Déplacement du Pion**
+    - [x] Implémentation : Modifier `rollDice` dans `useGameState.ts` (déplacement pas-à-pas) et `renderCenter` dans `App.tsx` (affichage intermédiaire avec `isMoving`). Corriger les ID hardcodés d'Alcootest, Énigme et Tournée dans `App.tsx` et `useGameState.ts`.
+    - [x] Documentation (JSDoc et commentaires) : JSDoc sur l'intervalle asynchrone et les callbacks de fin de mouvement.
+    - [x] Vérification des imports : S'assurer que les icônes nécessaires sont bien importées.
+    - [x] Vérification de la syntaxe : S'assurer du non-chevauchement des animations.
+    - [x] Test unitaire (jest DOM) : Ajuster et exécuter les tests Playwright (`tests/game.spec.ts`) pour valider la transition pas-à-pas et la fin de partie.
+
+
 
 
 

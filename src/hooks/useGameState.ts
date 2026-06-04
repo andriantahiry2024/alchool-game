@@ -91,63 +91,96 @@ export function useGameState() {
     }));
   };
 
-  // Handles dice roll value and moves player
+  /**
+   * Handles dice roll: first stores the dice value and sets isMoving,
+   * then animates the token step-by-step using chained setTimeout calls.
+   * Once the movement is complete, resolves the final tile effect.
+   *
+   * @param diceValue - The result of the dice roll (1-6)
+   */
   const rollDice = (diceValue: number) => {
-    setState((prev) => {
-      const players = [...prev.players];
-      const currentPlayer = { ...players[prev.currentPlayerIndex] };
-      const oldPos = currentPlayer.position;
-      
-      // Calculate new board index (16 total tiles)
-      const newPos = (oldPos + diceValue) % 16;
-      currentPlayer.position = newPos;
+    // Phase 1: Show the dice result and flag isMoving
+    setState((prev) => ({
+      ...prev,
+      diceValue,
+      isMoving: true,
+    }));
 
-      let log = `${currentPlayer.name} fait un ${diceValue} et se déplace sur : ${prev.tiles[newPos].name}.`;
+    // Phase 2: Animate step-by-step after a short delay
+    const STEP_DELAY_MS = 300;
+    let stepsRemaining = diceValue;
 
-      // Passed start tile (index 0)
-      if (newPos < oldPos && !currentPlayer.isPrisoner) {
-        log += ` 🎉 Bonus de passage : Distribue 2 gorgées !`;
-        const nextLaps = (currentPlayer.laps || 0) + 1;
-        currentPlayer.laps = nextLaps;
-        
-        if (nextLaps >= 3) {
-          players[prev.currentPlayerIndex] = currentPlayer;
-          return {
-            ...prev,
-            players,
-            diceValue,
-            activeScreen: 'gameover',
-            logMessages: [`🏆 ${currentPlayer.name} a franchi l'arrivée et gagne la partie !`, log, ...prev.logMessages].slice(0, 15),
-          };
+    const moveOneStep = () => {
+      stepsRemaining--;
+
+      setState((prev) => {
+        const players = [...prev.players];
+        const p = { ...players[prev.currentPlayerIndex] };
+        const newPos = (p.position + 1) % 32;
+        p.position = newPos;
+
+        // Check lap completion when crossing tile 0
+        if (newPos === 0 && !p.isPrisoner) {
+          p.laps = (p.laps || 0) + 1;
         }
+
+        players[prev.currentPlayerIndex] = p;
+        return { ...prev, players };
+      });
+
+      if (stepsRemaining > 0) {
+        setTimeout(moveOneStep, STEP_DELAY_MS);
+      } else {
+        // Phase 3: Movement finished — resolve destination
+        setTimeout(() => {
+          setState((prev) => {
+            const players = [...prev.players];
+            const p = { ...players[prev.currentPlayerIndex] };
+            const landedTile = prev.tiles[p.position];
+
+            let log = `${p.name} fait un ${diceValue} et arrive sur : ${landedTile.name}.`;
+
+            // Check victory (1 lap)
+            if ((p.laps || 0) >= 1) {
+              return {
+                ...prev,
+                players,
+                isMoving: false,
+                activeScreen: 'gameover',
+                logMessages: [`🏆 ${p.name} a franchi l'arrivée et gagne la partie !`, log, ...prev.logMessages].slice(0, 15),
+              };
+            }
+
+            // Radar check
+            if (landedTile.name.includes('Radar') && diceValue >= 4) {
+              log += ` 📸 FLASHÉ !`;
+            }
+
+            let nextScreen: GameState['activeScreen'] = 'board';
+            let activeCard = prev.activeCard;
+
+            if (landedTile.type === 'card') {
+              nextScreen = 'card';
+              activeCard = getRandomCard();
+            } else if (landedTile.type === 'bottle') {
+              nextScreen = 'bottle';
+            }
+
+            return {
+              ...prev,
+              players,
+              isMoving: false,
+              activeScreen: nextScreen,
+              activeCard,
+              logMessages: [log, ...prev.logMessages].slice(0, 15),
+            };
+          });
+        }, STEP_DELAY_MS);
       }
+    };
 
-      // Obstacle : Radar de Vitesse (case 3)
-      if (newPos === 3 && diceValue >= 4) {
-        log += ` 📸 FLASHÉ ! Excès de vitesse (${diceValue} au dé) sur le Radar ! Pénalité de 3 gorgées en attente.`;
-      }
-
-      players[prev.currentPlayerIndex] = currentPlayer;
-      const landedTile = prev.tiles[newPos];
-      let nextScreen: GameState['activeScreen'] = 'board';
-      let activeCard = prev.activeCard;
-
-      if (landedTile.type === 'card') {
-        nextScreen = 'card';
-        activeCard = getRandomCard();
-      } else if (landedTile.type === 'bottle') {
-        nextScreen = 'bottle';
-      }
-
-      return {
-        ...prev,
-        players,
-        diceValue,
-        activeScreen: nextScreen,
-        activeCard,
-        logMessages: [log, ...prev.logMessages].slice(0, 15),
-      };
-    });
+    // Start the first step after a 800ms pause to display the dice result
+    setTimeout(moveOneStep, 800);
   };
 
   // Resolves the drawn card challenge
@@ -184,7 +217,7 @@ export function useGameState() {
           const finalIndex = targetIndex !== -1 ? targetIndex : currentPlayerIndex;
           const target = { ...players[finalIndex] };
           const oldPos = target.position;
-          const newPos = (oldPos - 3 + 16) % 16;
+          const newPos = (oldPos - 3 + 32) % 32;
           target.position = newPos;
           players[finalIndex] = target;
           log += ` ⬅️ ${target.name} recule de 3 cases sur : ${prev.tiles[newPos].name} !`;
@@ -198,7 +231,7 @@ export function useGameState() {
           }
         } else if (card.id === 's4') {
           const oldPos = p.position;
-          const newPos = (oldPos - 2 + 16) % 16;
+          const newPos = (oldPos - 2 + 32) % 32;
           p.position = newPos;
           players[currentPlayerIndex] = p;
           log += ` ⬅️ ${p.name} recule de 2 cases sur : ${prev.tiles[newPos].name} !`;
@@ -359,12 +392,12 @@ export function useGameState() {
     });
   };
 
-  // Send a player directly to prison
+  // Send a player directly to prison (tile 8 = CELLULE DÉGRISEMENT)
   const sendToJail = (playerId: string) => {
     setState((prev) => {
       const players = prev.players.map((p) => {
         if (p.id === playerId) {
-          return { ...p, position: 5, isPrisoner: true, prisonTurns: 0 };
+          return { ...p, position: 8, isPrisoner: true, prisonTurns: 0 };
         }
         return p;
       });
