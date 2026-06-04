@@ -336,12 +336,24 @@
     - [x] Test unitaire (jest DOM) : Ajuster et exécuter les tests Playwright (`tests/game.spec.ts`) pour valider la transition pas-à-pas et la fin de partie.
 
 
+## Phase 17 : Centrage du Dé, Animation Pas-à-Pas Visuelle et Mise à Jour des Tests
+* **Centrage et Amélioration Esthétique du Dé 3D (DiceRoller)**
+    - [x] Implémentation : Ajouter `top: 0; left: 0;` sur `.dice-face` dans `src/index.css`, agrandir le dé à `80px` (ou `100px`), centrer verticalement et horizontalement la scène du dé et corriger les alignements CSS pour éviter les décalages.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les corrections de styles CSS 3D.
+    - [x] Vérification des imports : Aucun import mort.
+    - [x] Vérification de la syntaxe : CSS et TS valides.
+    - [x] Test unitaire (jest DOM) : Simuler le centrage et la visibilité du dé.
 
+* **Déplacement Pas-à-Pas Visible du Pion**
+    - [x] Implémentation : S'assurer que le pion du joueur actif passe visiblement par chaque case intermédiaire à intervalle régulier de 300ms sur le plateau 9x9 sans sauts instantanés, et corriger toute désynchronisation d'état dans `src/hooks/useGameState.ts`.
+    - [x] Documentation (JSDoc et commentaires) : Expliquer le cycle de rendu React et la gestion d'état asynchrone pour le mouvement.
+    - [x] Vérification des imports : Pas d'imports inutilisés dans useGameState.
+    - [x] Vérification de la syntaxe : Pas d'erreurs de typage ou de syntaxe.
+    - [x] Test unitaire (jest DOM) : Test Playwright simulant le déplacement intermédiaire visible.
 
-
-
-
-
-
-
-
+* **Correction et Mise à Jour Globale de la Suite de Tests Playwright**
+    - [x] Implémentation : Mettre à jour `tests/board.spec.ts` pour la grille 9x9 (32 cases), ajuster les assertions de positions, corriger `tests/gameData.spec.ts` pour 32 cases et adapter `tests/game.spec.ts` avec des attentes suffisantes pour le dé et le déplacement pas-à-pas.
+    - [x] Documentation (JSDoc et commentaires) : Commenter les scénarios de test mis à jour.
+    - [x] Vérification des imports : Imports propres dans les fichiers de test.
+    - [x] Vérification de la syntaxe : Syntaxe de test correcte.
+    - [x] Test unitaire (jest DOM) : Exécuter la suite complète et s'assurer que tous les tests passent à 100%.

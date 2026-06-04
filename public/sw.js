@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alcooly-cache-v1';
+const CACHE_NAME = 'alcooly-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -39,37 +39,47 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event - Cache-First with dynamic caching for local assets
+// Fetch Event - Network-First for HTML/navigation, Cache-First for static assets
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
   // Only handle same-origin HTTP/HTTPS requests
   if (requestUrl.origin === location.origin && event.request.method === 'GET') {
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
+    const isNavigation = event.request.mode === 'navigate' || requestUrl.pathname === '/' || requestUrl.pathname.endsWith('.html');
 
-        return fetch(event.request).then((networkResponse) => {
-          // Check if valid response to cache
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+    if (isNavigation) {
+      event.respondWith(
+        fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const responseToCache = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+            }
             return networkResponse;
+          })
+          .catch(() => caches.match('/'))
+      );
+    } else {
+      event.respondWith(
+        caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
           }
 
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+          return fetch(event.request).then((networkResponse) => {
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+              return networkResponse;
+            }
+
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+
+            return networkResponse;
           });
-
-          return networkResponse;
-        }).catch(() => {
-          // Offline fallback if not in cache (e.g. loading index page offline)
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
-        });
-      })
-    );
+        })
+      );
+    }
   }
 });

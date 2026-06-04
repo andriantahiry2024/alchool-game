@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 import { CARDS_DATABASE, INITIAL_TILES } from '../src/gameData';
 
 test.describe('Game Data Verification', () => {
-  test('should have 16 tiles on the board', () => {
-    expect(INITIAL_TILES.length).toBe(16);
+  test('should have 32 tiles on the board', () => {
+    expect(INITIAL_TILES.length).toBe(32);
   });
 
   test('each tile should have a valid ID, type and name', () => {
     INITIAL_TILES.forEach((tile) => {
       expect(tile.id).toBeGreaterThanOrEqual(0);
-      expect(tile.id).toBeLessThan(16);
+      expect(tile.id).toBeLessThan(32);
       expect(tile.name.length).toBeGreaterThan(0);
       expect(tile.type).toBeTruthy();
     });

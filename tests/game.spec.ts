@@ -55,8 +55,8 @@ test.describe('Alcooly Full Game Loop E2E', () => {
     await expect(rollBtn).toBeVisible();
     await rollBtn.click();
 
-    // Wait for the roll animation and tile movement to finish (1.5s total delay)
-    await page.waitForTimeout(2000);
+    // Wait for the roll animation and tile movement to finish (spin + result pause + step-by-step movement)
+    await page.waitForTimeout(5500);
 
     // 6. Dynamically resolve the landing tile screen to verify progress
     if (await page.locator('.card-3d').isVisible()) {

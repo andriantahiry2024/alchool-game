@@ -9,10 +9,10 @@ interface DiceRollerProps {
 const ROTATIONS = [
   { x: 0, y: 0 },       // Face 1 (unused index 0)
   { x: 0, y: 0 },       // Face 1
-  { x: 0, y: 90 },      // Face 2
+  { x: 0, y: -90 },     // Face 2
   { x: -90, y: 0 },     // Face 3
   { x: 90, y: 0 },      // Face 4
-  { x: 0, y: -90 },     // Face 5
+  { x: 0, y: 90 },      // Face 5
   { x: 180, y: 0 },     // Face 6
 ];
 
