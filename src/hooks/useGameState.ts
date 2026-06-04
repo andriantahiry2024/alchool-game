@@ -34,6 +34,27 @@ export function drawBarScenarioWithoutRepetition(usedScenarios: number[]): { sce
   return { scenario: selectedScenario, newUsedScenarios: newUsedScenarios };
 }
 
+/**
+ * Selects a random duo challenge index (0 to totalCount-1) without repeating until all have been played.
+ *
+ * @param usedIndices - Array of duo challenge indices already played
+ * @param totalCount - Total number of duo challenges
+ * @returns An object with the selected index and the updated array of used indices
+ */
+export function drawDuoChallengeWithoutRepetition(usedIndices: number[], totalCount: number): { index: number; newUsedIndices: number[] } {
+  const allIndices = Array.from({ length: totalCount }, (_, i) => i);
+  let available = allIndices.filter((idx) => !usedIndices.includes(idx));
+  let newUsedIndices = [...usedIndices];
+  if (available.length === 0) {
+    available = allIndices;
+    newUsedIndices = [];
+  }
+  const randomIndex = Math.floor(Math.random() * available.length);
+  const selectedIndex = available[randomIndex];
+  newUsedIndices.push(selectedIndex);
+  return { index: selectedIndex, newUsedIndices: newUsedIndices };
+}
+
 
 /**
  * Shuffles a 32-card traditional deck and returns a card fétiche for each player.
@@ -66,6 +87,7 @@ const INITIAL_STATE: GameState = {
   logMessages: ['Bienvenue sur Alcooly ! configurez la partie.'],
   usedBarScenarios: [],
   usedCardIds: [],
+  usedDuoChallenges: [],
   pendingTransfer: null,
 };
 
@@ -371,7 +393,10 @@ export function useGameState() {
         `✌️ Chifoumi de la Vengeance : ${p1} et ${p2} jouent au Pierre-Feuille-Ciseaux en 3 manches. Le perdant boit 3 gorgées !`,
         `✋ Chifoumi Aléatoire : ${p1} et ${p2} jouent au Pierre-Feuille-Ciseaux. Celui qui perd boit 2 gorgées, et le gagnant distribue 1 gorgée !`
       ];
-      const randomChallenge = DUO_CHALLENGES[Math.floor(Math.random() * DUO_CHALLENGES.length)];
+      let usedDuoChallenges = prev.usedDuoChallenges || [];
+      const drawRes = drawDuoChallengeWithoutRepetition(usedDuoChallenges, DUO_CHALLENGES.length);
+      const randomChallenge = DUO_CHALLENGES[drawRes.index];
+      usedDuoChallenges = drawRes.newUsedIndices;
       const log = `🍾 Bouteille : ${p1} doit effectuer une action avec ${p2} !`;
       
       return {
@@ -379,6 +404,7 @@ export function useGameState() {
         selectedBottleTargetId: target.id,
         activeDuoChallenge: randomChallenge,
         activeScreen: 'minigame',
+        usedDuoChallenges,
         logMessages: [log, ...prev.logMessages].slice(0, 15),
       };
     });

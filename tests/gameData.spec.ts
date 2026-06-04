@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { CARDS_DATABASE, INITIAL_TILES } from '../src/gameData';
-import { drawCardWithoutRepetition, drawBarScenarioWithoutRepetition } from '../src/hooks/useGameState';
+import { drawCardWithoutRepetition, drawBarScenarioWithoutRepetition, drawDuoChallengeWithoutRepetition } from '../src/hooks/useGameState';
 
 test.describe('Game Data Verification', () => {
   test('should have 32 tiles on the board', () => {
@@ -61,5 +61,22 @@ test.describe('Game Data Verification', () => {
     const { scenario: nextScenario, newUsedScenarios: nextUsedScenarios } = drawBarScenarioWithoutRepetition(usedScenarios);
     expect(nextUsedScenarios.length).toBe(1);
     expect(nextUsedScenarios[0]).toBe(nextScenario);
+
+    // Verify duo challenge drawing without repetition
+    let usedDuoChallenges: number[] = [];
+    const drawnDuoChallenges = new Set<number>();
+    const totalDuoCount = 26;
+
+    for (let i = 0; i < totalDuoCount; i++) {
+      const { index, newUsedIndices } = drawDuoChallengeWithoutRepetition(usedDuoChallenges, totalDuoCount);
+      expect(drawnDuoChallenges.has(index)).toBe(false);
+      drawnDuoChallenges.add(index);
+      usedDuoChallenges = newUsedIndices;
+      expect(usedDuoChallenges.length).toBe(i + 1);
+    }
+
+    const { index: nextDuo, newUsedIndices: nextUsedDuo } = drawDuoChallengeWithoutRepetition(usedDuoChallenges, totalDuoCount);
+    expect(nextUsedDuo.length).toBe(1);
+    expect(nextUsedDuo[0]).toBe(nextDuo);
   });
 });

@@ -470,4 +470,12 @@
     - [x] Vérification de la syntaxe
     - [x] Test unitaire (jest DOM)
 
+## Phase 30 : Vérification agressive et rotation sans répétition des défis de la bouteille (Duo)
+* **Vérification Agressive et Rotation Duo**
+    - [x] Implémentation : Ajouter usedDuoChallenges au state, créer drawDuoChallengeWithoutRepetition, et l'intégrer lors du tirage de bouteille (resolveBottle).
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
 
