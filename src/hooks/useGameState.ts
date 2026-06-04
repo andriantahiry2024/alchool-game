@@ -326,7 +326,8 @@ export function useGameState() {
           const finalIndex = targetIndex !== -1 ? targetIndex : currentPlayerIndex;
           const target = { ...players[finalIndex] };
           const oldPos = target.position;
-          const newPos = (oldPos - 3 + 32) % 32;
+          // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
+          const newPos = Math.max(0, oldPos - 3);
           target.position = newPos;
           players[finalIndex] = target;
           log += ` ⬅️ ${target.name} recule de 3 cases sur : ${prev.tiles[newPos].name} !`;
@@ -342,7 +343,8 @@ export function useGameState() {
           }
         } else if (card.id === 's4') {
           const oldPos = p.position;
-          const newPos = (oldPos - 2 + 32) % 32;
+          // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
+          const newPos = Math.max(0, oldPos - 2);
           p.position = newPos;
           players[currentPlayerIndex] = p;
           log += ` ⬅️ ${p.name} recule de 2 cases sur : ${prev.tiles[newPos].name} !`;
@@ -536,7 +538,8 @@ export function useGameState() {
         players.forEach((pl, idx) => {
           if (idx !== currentPlayerIndex) {
             const oldPos = pl.position;
-            const newPos = (oldPos - 3 + 32) % 32;
+            // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
+            const newPos = Math.max(0, oldPos - 3);
             players[idx] = { ...pl, position: newPos };
           }
         });

@@ -486,4 +486,12 @@
     - [x] Vérification de la syntaxe
     - [x] Test unitaire (jest DOM)
 
+## Phase 32 : Limitation des déplacements rétrogrades pour ne pas dépasser la case DÉPART
+* **Limitation Déplacements Rétrogrades**
+    * [x] Implémentation : Remplacer les calculs de wrap-around modulo %32 par Math.max(0, oldPos - recul) dans useGameState.ts pour les cartes d4, s4 et le scénario recule3.
+    * [x] Documentation (JSDoc et commentaires) : Expliquer que la case de départ 0 est la limite minimale en marche arrière.
+    * [x] Vérification des imports : S'assurer que les imports sont valides et aucun import mort n'est laissé.
+    * [x] Vérification de la syntaxe : S'assurer de la conformité du code TypeScript.
+    * [x] Test unitaire (jest DOM) : Ajouter un test Playwright pour vérifier qu'un joueur ne recule jamais sous l'index 0 et ne wrap-around pas.
+
 

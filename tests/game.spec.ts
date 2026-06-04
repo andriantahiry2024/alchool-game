@@ -241,4 +241,92 @@ test.describe('Alcooly Full Game Loop E2E', () => {
     // Vérifier que la modale a disparu
     await expect(transferModal).not.toBeVisible();
   });
+
+  test('should clamp retrograde movement to index 0 and not wrap-around or trigger gameover', async ({ page }) => {
+    await page.goto('/');
+
+    // Inscrire les joueurs
+    await page.fill('.setup-input', 'Alice');
+    await page.click('.add-btn');
+    await page.fill('.setup-input', 'Bob');
+    await page.click('.add-btn');
+    await page.click('.start-btn');
+
+    // Révéler les cartes fétiches
+    const revealCards = page.locator('.reveal-card-3d');
+    await revealCards.nth(0).click();
+    await revealCards.nth(1).click();
+    await page.click('.reveal-confirm-btn');
+
+    // Attendre le plateau de jeu
+    await expect(page.locator('.board-grid')).toBeVisible();
+
+    // Injecter un état mocké dans localStorage
+    // Alice est sur l'index 1 (Bar 1), activeCard est 's4' (Reculer de 2 cases), et l'écran est 'card'
+    await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        state.players = [
+          {
+            ...state.players[0],
+            name: 'Alice',
+            position: 1, // Bar 1
+            laps: 0,
+          },
+          {
+            ...state.players[1],
+            name: 'Bob',
+            position: 2,
+            laps: 0,
+          }
+        ];
+        state.currentPlayerIndex = 0;
+        state.activeScreen = 'card';
+        state.activeCard = {
+          id: 's4',
+          category: 'movement',
+          suit: 'pique',
+          cardValue: '10',
+          title: 'Le 10 de Pique ♠️',
+          text: 'Pression policière ! Les flics font une descente de routine. Recule immédiatement de 2 cases ! (Pas de pénalité de boisson).',
+          penalty: 0,
+        };
+        localStorage.setItem('alcooly_game_state', JSON.stringify(state));
+      }
+    });
+
+    // Recharger la page pour charger l'état mocké
+    await page.reload();
+
+    // Vérifier que nous sommes sur l'écran carte
+    const card3d = page.locator('.card-3d');
+    await expect(card3d).toBeVisible();
+
+    // Cliquer sur le dos de la carte pour la retourner
+    await card3d.click();
+
+    // Cliquer sur le bouton d'effet
+    const applyEffectBtn = page.locator('button:has-text("Appliquer l\'effet")').first();
+    await expect(applyEffectBtn).toBeVisible();
+    await applyEffectBtn.click();
+
+    // Attendre la fin de la transition et vérifier que le joueur est sur l'index 0 (DÉPART)
+    await page.waitForTimeout(500);
+
+    // Ouvrir le tableau de bord
+    await page.click('#menu-btn');
+    await expect(page.locator('#dashboard-modal')).toBeVisible();
+
+    // Alice (index 0) doit être active et avoir 0 laps
+    const gameState = await page.evaluate(() => {
+      const saved = localStorage.getItem('alcooly_game_state');
+      return saved ? JSON.parse(saved) : null;
+    });
+
+    expect(gameState.players[0].position).toBe(0);
+    expect(gameState.players[0].laps).toBe(0);
+    // S'assurer que le jeu n'est pas fini
+    expect(gameState.activeScreen).not.toBe('gameover');
+  });
 });
