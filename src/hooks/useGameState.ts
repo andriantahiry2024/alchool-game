@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { GameState, Player, SuitType, Card } from '../types';
-import { INITIAL_TILES, CARDS_DATABASE } from '../gameData';
+import { INITIAL_TILES, CARDS_DATABASE, DUO_CHALLENGES, getDuoChallengeDetails } from '../gameData';
 
 /**
  * Draws a random card from the database without repeating cards that were already drawn in the current rotation.
@@ -55,6 +55,77 @@ export function drawDuoChallengeWithoutRepetition(usedIndices: number[], totalCo
   return { index: selectedIndex, newUsedIndices: newUsedIndices };
 }
 
+/**
+ * Helper to add sips to a player and also propagate to a linked partner if active.
+ */
+export function addSips(
+  players: Player[],
+  playerId: string,
+  amount: number,
+  linkedPlayers?: [string, string] | null,
+  linkedTurns?: number | null
+): Player[] {
+  if (amount <= 0) return players;
+  let nextPlayers = players.map((p) => {
+    if (p.id === playerId) {
+      return { ...p, sipsCount: p.sipsCount + amount };
+    }
+    return p;
+  });
+
+  if (linkedPlayers && linkedTurns && linkedTurns > 0 && linkedPlayers.includes(playerId)) {
+    const partnerId = linkedPlayers.find((id) => id !== playerId);
+    if (partnerId) {
+      nextPlayers = nextPlayers.map((p) => {
+        if (p.id === partnerId) {
+          return { ...p, sipsCount: p.sipsCount + amount };
+        }
+        return p;
+      });
+    }
+  }
+  return nextPlayers;
+}
+
+/**
+ * Returns updates to GameState when advancing the turn, decrementing linked players and rules.
+ */
+export function getNextTurnState(prev: GameState, nextIndex: number): Partial<GameState> {
+  const updates: Partial<GameState> = {
+    currentPlayerIndex: nextIndex,
+    diceValue: null,
+    selectedBottleTargetId: null,
+    activeDuoChallenge: null,
+    activeDuoChallengeType: null,
+    activeDuoChallengePenalty: null,
+    jailRollResult: null,
+  };
+
+  // Decrement round-based active rule and linked players when wrapping back to index 0
+  if (nextIndex === 0) {
+    if (prev.linkedTurns && prev.linkedTurns > 0) {
+      const nextLinkedTurns = prev.linkedTurns - 1;
+      if (nextLinkedTurns <= 0) {
+        updates.linkedPlayers = null;
+        updates.linkedTurns = null;
+      } else {
+        updates.linkedTurns = nextLinkedTurns;
+      }
+    }
+    if (prev.activeRule && prev.activeRule.turns > 0) {
+      const nextRuleTurns = prev.activeRule.turns - 1;
+      if (nextRuleTurns <= 0) {
+        updates.activeRule = null;
+      } else {
+        updates.activeRule = { ...prev.activeRule, turns: nextRuleTurns };
+      }
+    }
+  }
+  return updates;
+}
+
+
+
 
 /**
  * Shuffles a 32-card traditional deck and returns a card fétiche for each player.
@@ -83,12 +154,18 @@ const INITIAL_STATE: GameState = {
   activeScreen: 'setup',
   selectedBottleTargetId: null,
   activeDuoChallenge: null,
+  activeDuoChallengeType: null,
+  activeDuoChallengePenalty: null,
   diceValue: null,
   logMessages: ['Bienvenue sur Alcooly ! configurez la partie.'],
   usedBarScenarios: [],
   usedCardIds: [],
   usedDuoChallenges: [],
   pendingTransfer: null,
+  jailRollResult: null,
+  activeRule: null,
+  linkedPlayers: null,
+  linkedTurns: null,
 };
 
 /**
@@ -100,12 +177,33 @@ const getInitialState = (): GameState => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        let activeCard = parsed.activeCard;
+        if (activeCard) {
+          const dbCard = CARDS_DATABASE.find((c) => c.id === activeCard.id);
+          if (dbCard) {
+            activeCard = dbCard;
+          }
+        }
+        let activeDuoChallengeType = parsed.activeDuoChallengeType;
+        let activeDuoChallengePenalty = parsed.activeDuoChallengePenalty;
+        if (parsed.activeDuoChallenge && (!activeDuoChallengeType || activeDuoChallengePenalty === undefined || activeDuoChallengePenalty === null)) {
+          const details = getDuoChallengeDetails(parsed.activeDuoChallenge);
+          if (!activeDuoChallengeType) activeDuoChallengeType = details.type;
+          if (activeDuoChallengePenalty === undefined || activeDuoChallengePenalty === null) activeDuoChallengePenalty = details.penalty;
+        }
         return {
           ...INITIAL_STATE,
           ...parsed,
+          activeCard,
           usedBarScenarios: parsed.usedBarScenarios || [],
           usedCardIds: parsed.usedCardIds || [],
           usedDuoChallenges: parsed.usedDuoChallenges || [],
+          activeDuoChallengeType: activeDuoChallengeType !== undefined ? activeDuoChallengeType : null,
+          activeDuoChallengePenalty: activeDuoChallengePenalty !== undefined ? activeDuoChallengePenalty : null,
+          jailRollResult: parsed.jailRollResult !== undefined ? parsed.jailRollResult : null,
+          activeRule: parsed.activeRule !== undefined ? parsed.activeRule : null,
+          linkedPlayers: parsed.linkedPlayers !== undefined ? parsed.linkedPlayers : null,
+          linkedTurns: parsed.linkedTurns !== undefined ? parsed.linkedTurns : null,
         };
       } catch (e) {
         console.error('Failed to parse saved state:', e);
@@ -138,6 +236,7 @@ export function useGameState() {
       card: cards[idx],
       laps: 0,
       powerUsed: false,
+      isLockedAtStart: true,
     }));
     setState((prev) => ({
       ...prev,
@@ -146,6 +245,13 @@ export function useGameState() {
       usedBarScenarios: [],
       usedCardIds: [],
       usedDuoChallenges: [],
+      activeDuoChallenge: null,
+      activeDuoChallengeType: null,
+      activeDuoChallengePenalty: null,
+      jailRollResult: null,
+      activeRule: null,
+      linkedPlayers: null,
+      linkedTurns: null,
       logMessages: ['Chaque joueur tire sa carte fétiche !', 'La soirée commence !'],
     }));
   };
@@ -167,6 +273,37 @@ export function useGameState() {
    * @param diceValue - The result of the dice roll (1-6)
    */
   const rollDice = (diceValue: number) => {
+    const activePlayer = state.players[state.currentPlayerIndex];
+    if (activePlayer.position === 0 && activePlayer.isLockedAtStart) {
+      if (diceValue === 6) {
+        setState((prev) => {
+          const players = [...prev.players];
+          const p = { ...players[prev.currentPlayerIndex] };
+          p.isLockedAtStart = false;
+          players[prev.currentPlayerIndex] = p;
+          const log = `🔓 ${p.name} fait un 6 et est débloqué(e) de la case DÉPART ! Relance le dé pour avancer.`;
+          return {
+            ...prev,
+            players,
+            diceValue: null,
+            isMoving: false,
+            logMessages: [log, ...prev.logMessages].slice(0, 15),
+          };
+        });
+      } else {
+        setState((prev) => {
+          const log = `🚨 ${activePlayer.name} fait un ${diceValue} et reste bloqué(e) à la case DÉPART.`;
+          return {
+            ...prev,
+            diceValue,
+            isMoving: false,
+            logMessages: [log, ...prev.logMessages].slice(0, 15),
+          };
+        });
+      }
+      return;
+    }
+
     // Phase 1: Show the dice result and flag isMoving
     setState((prev) => ({
       ...prev,
@@ -190,6 +327,10 @@ export function useGameState() {
         // Check lap completion when crossing tile 0
         if (newPos === 0 && !p.isPrisoner) {
           p.laps = (p.laps || 0) + 1;
+        }
+
+        if (stepsRemaining === 0 && newPos === 0) {
+          p.isLockedAtStart = true;
         }
 
         players[prev.currentPlayerIndex] = p;
@@ -297,71 +438,372 @@ export function useGameState() {
   };
 
   // Resolves the drawn card challenge
-  const resolveCard = (success: boolean, penalty: number) => {
+  const resolveCard = (success: boolean, penalty: number, payload?: any) => {
     setState((prev) => {
-      const players = [...prev.players];
+      let players = [...prev.players];
       const currentPlayerIndex = prev.currentPlayerIndex;
       const p = { ...players[currentPlayerIndex] };
       const card = prev.activeCard;
       let log = '';
 
-      if (card && card.category === 'movement') {
+      let activeRule = prev.activeRule;
+      let linkedPlayers = prev.linkedPlayers;
+      let linkedTurns = prev.linkedTurns;
+
+      let nextScreen: GameState['activeScreen'] = 'board';
+      let activeCard: any = null;
+      let usedCardIds: string[] = prev.usedCardIds || [];
+
+      // Helper to handle retrograde movement and update screens
+      const movePlayerRetrograde = (playerIdx: number, steps: number) => {
+        const target = { ...players[playerIdx] };
+        if (target.isPrisoner) {
+          log += ` (Mais ${target.name} est en cellule de dégrisement et ne bouge pas)`;
+          return;
+        }
+        const oldPos = target.position;
+        const newPos = Math.max(0, oldPos - steps);
+        target.position = newPos;
+        if (newPos === 0) {
+          target.isLockedAtStart = true;
+        }
+        players[playerIdx] = target;
+        log += ` ⬅️ ${target.name} recule de ${steps} case(s) sur : ${prev.tiles[newPos].name} !`;
+
+        const landedTile = prev.tiles[newPos];
+        if (landedTile.type === 'card') {
+          nextScreen = 'card';
+          const drawRes = drawCardWithoutRepetition(usedCardIds);
+          activeCard = drawRes.card;
+          usedCardIds = drawRes.newUsedIds;
+        } else if (landedTile.type === 'bottle') {
+          nextScreen = 'bottle';
+        }
+      };
+
+      // Helper to add sips with Âmes Sœurs logic
+      const applySips = (playersList: Player[], targetId: string, amount: number): Player[] => {
+        return addSips(playersList, targetId, amount, linkedPlayers, linkedTurns);
+      };
+
+      if (payload) {
+        log = `🎬 Effet de carte : ${card?.title}. `;
+        if (payload.type === 'resolve_custom') {
+          log = payload.log || '';
+          if (payload.sips) {
+            Object.entries(payload.sips).forEach(([pid, amount]) => {
+              players = applySips(players, pid, amount as number);
+            });
+          }
+          if (payload.movements) {
+            Object.entries(payload.movements).forEach(([pid, move]: [string, any]) => {
+              const idx = players.findIndex((pl) => pl.id === pid);
+              if (idx !== -1) {
+                if (move.position !== undefined) {
+                  const target = { ...players[idx] };
+                  target.position = move.position;
+                  if (move.position === 0) target.isLockedAtStart = true;
+                  players[idx] = target;
+                  if (idx === currentPlayerIndex) {
+                    p.position = move.position;
+                    p.isLockedAtStart = target.isLockedAtStart;
+                  }
+                } else if (move.recul !== undefined) {
+                  movePlayerRetrograde(idx, move.recul);
+                }
+              }
+            });
+          }
+          if (payload.linkedIds) {
+            linkedPlayers = payload.linkedIds;
+            linkedTurns = 2;
+          }
+          p.challengesCompleted += 1;
+          // Synchroniser la position et isLockedAtStart au cas où le joueur actif a reculé
+          p.position = players[currentPlayerIndex].position;
+          p.isLockedAtStart = players[currentPlayerIndex].isLockedAtStart;
+          players[currentPlayerIndex] = p;
+        } else if (
+          payload.type === 'group_pique' ||
+          payload.type === 'group_black' ||
+          payload.type === 'group_carreau' ||
+          payload.type === 'group_chifoumi'
+        ) {
+          const targetIds: string[] = payload.targetIds || [];
+          const amount = payload.penalty;
+          if (targetIds.length > 0) {
+            targetIds.forEach((id) => {
+              players = applySips(players, id, amount);
+            });
+            const names = targetIds.map((id) => players.find((pl) => pl.id === id)?.name).join(', ');
+            log += `🍻 ${names} boivent ${amount} gorgée(s) !`;
+          } else {
+            players = applySips(players, p.id, payload.fallbackPenalty || 1);
+            log += `🍺 Personne n'est affecté, ${p.name} boit ${payload.fallbackPenalty || 1} gorgée(s) !`;
+          }
+        } else if (payload.type === 'distribute') {
+          const distributions: { playerId: string; amount: number }[] = payload.distributions || [];
+          distributions.forEach((d) => {
+            players = applySips(players, d.playerId, d.amount);
+          });
+          const summary = distributions.map((d) => `${players.find((pl) => pl.id === d.playerId)?.name} (+${d.amount}G)`).join(', ');
+          log += `🎁 Distribution : ${summary} !`;
+          const perfIdx = players.findIndex((pl) => pl.id === (payload.performerId || p.id));
+          if (perfIdx !== -1) {
+            players[perfIdx] = { ...players[perfIdx], challengesCompleted: players[perfIdx].challengesCompleted + 1 };
+          }
+        } else if (payload.type === 'solo_challenge') {
+          const performerId = payload.performerId;
+          const perfIdx = players.findIndex((pl) => pl.id === performerId);
+          if (perfIdx !== -1) {
+            if (payload.success) {
+              players[perfIdx] = { ...players[perfIdx], challengesCompleted: players[perfIdx].challengesCompleted + 1 };
+              log += `✅ ${players[perfIdx].name} a réussi son défi !`;
+            } else {
+              players = applySips(players, performerId, payload.penalty);
+              log += `🍺 ${players[perfIdx].name} a échoué et boit ${payload.penalty} gorgée(s) !`;
+            }
+          }
+        } else if (payload.type === 'link_coeur') {
+          linkedPlayers = payload.linkedIds;
+          linkedTurns = 2;
+          const name1 = players.find((pl) => pl.id === linkedPlayers?.[0])?.name || '';
+          const name2 = players.find((pl) => pl.id === linkedPlayers?.[1])?.name || '';
+          log += `💘 ${name1} et ${name2} sont désormais Âmes Sœurs pour 2 tours !`;
+          p.challengesCompleted += 1;
+          players[currentPlayerIndex] = p;
+        } else if (payload.type === 'absurd_rule') {
+          activeRule = {
+            text: payload.ruleText,
+            turns: 2,
+            ownerName: payload.ownerName,
+          };
+          log += `📜 Nouvelle règle absurde : "${payload.ruleText}" !`;
+          p.challengesCompleted += 1;
+          players[currentPlayerIndex] = p;
+        } else if (payload.type === 'as_trefle_duel') {
+          const { highestId, lowestId, highestAction } = payload;
+          const highIdx = players.findIndex((pl) => pl.id === highestId);
+          const lowIdx = players.findIndex((pl) => pl.id === lowestId);
+
+          if (highIdx !== -1) {
+            if (highestAction === 'sip') {
+              players = applySips(players, highestId, 6);
+              log += `🍺 ${players[highIdx].name} (le plus fort) boit cul sec ! `;
+            } else {
+              players[highIdx] = { ...players[highIdx], position: 0, isLockedAtStart: true };
+              log += `🏁 ${players[highIdx].name} (le plus fort) retourne au DÉPART ! `;
+            }
+          }
+          if (lowIdx !== -1) {
+            players[lowIdx] = { ...players[lowIdx], position: 0, isLockedAtStart: true };
+            log += `🏁 ${players[lowIdx].name} (le plus faible) retourne au DÉPART !`;
+          }
+        } else if (payload.type === 'silence_loser') {
+          const loserId = payload.loserId;
+          const loserIdx = players.findIndex((pl) => pl.id === loserId);
+          if (loserIdx !== -1) {
+            players = applySips(players, loserId, 3);
+            log += `🤫 ${players[loserIdx].name} a rompu le silence et boit 3 gorgées !`;
+          } else {
+            log += `🤫 Le silence s'est terminé sans pénalité.`;
+          }
+        } else if (payload.type === 's3_choices') {
+          const choices: { [playerId: string]: 'cul_sec' | 'depart' } = payload.choices || {};
+          Object.entries(choices).forEach(([pid, choice]) => {
+            const idx = players.findIndex((pl) => pl.id === pid);
+            if (idx !== -1) {
+              if (choice === 'cul_sec') {
+                players = applySips(players, pid, 6);
+                log += `🍺 ${players[idx].name} boit cul sec ! `;
+              } else if (choice === 'depart') {
+                players[idx] = { ...players[idx], position: 0, isLockedAtStart: true };
+                log += `🏁 ${players[idx].name} retourne au DÉPART ! `;
+              }
+            }
+          });
+        } else if (payload.type === 's4_movement') {
+          const targetIds: string[] = payload.targetIds || [];
+          targetIds.forEach(id => {
+            const idx = players.findIndex((pl) => pl.id === id);
+            if (idx !== -1) movePlayerRetrograde(idx, 2);
+          });
+        } else if (payload.type === 's4_movement_all') {
+          players.forEach((pl, idx) => {
+            if (!pl.isPrisoner) {
+              movePlayerRetrograde(idx, 2);
+            }
+          });
+          log += `⬅️ Tout le monde recule (sauf en cellule) !`;
+        } else if (payload.type === 's5_action') {
+          const { playerId, action } = payload;
+          const idx = players.findIndex((pl) => pl.id === playerId);
+          if (idx !== -1) {
+            if (action === 'sip') {
+              players = applySips(players, playerId, 3);
+              log += `🍺 ${players[idx].name} perd et boit 3 gorgées !`;
+            } else if (action === 'recul') {
+              movePlayerRetrograde(idx, 3);
+            }
+          }
+        } else if (payload.type === 'recul_active') {
+          const amount = payload.amount || 0;
+          movePlayerRetrograde(currentPlayerIndex, amount);
+        } else if (payload.type === 'h5_action') {
+          const { status, action, targetId } = payload;
+          const activeIdx = currentPlayerIndex;
+          const leftPlayer = players[(activeIdx - 1 + players.length) % players.length];
+          if (status === 'gagne') {
+            if (action === 'sip') {
+              players = applySips(players, leftPlayer.id, 2);
+              log += `✅ ${p.name} gagne le duel ! ${leftPlayer.name} boit 2 gorgées !`;
+            } else if (action === 'depart') {
+              const lIdx = players.findIndex(pl => pl.id === leftPlayer.id);
+              if (lIdx !== -1) {
+                players[lIdx] = { ...players[lIdx], position: 0, isLockedAtStart: true };
+              }
+              log += `✅ ${p.name} gagne le duel ! ${leftPlayer.name} retourne au DÉPART !`;
+            }
+          } else if (status === 'perdu') {
+            if (action === 'sip') {
+              players = applySips(players, p.id, 1);
+              players = applySips(players, leftPlayer.id, 1);
+              log += `❌ ${p.name} perd le duel ! Les deux boivent 1 gorgée !`;
+            } else if (action === 'depart' && targetId) {
+              const tIdx = players.findIndex(pl => pl.id === targetId);
+              if (tIdx !== -1) {
+                players[tIdx] = { ...players[tIdx], position: 0, isLockedAtStart: true };
+              }
+              const targetName = players.find(pl => pl.id === targetId)?.name || '';
+              log += `❌ ${p.name} perd le duel ! ${targetName} retourne au DÉPART !`;
+            }
+          }
+        } else if (payload.type === 'recul_player') {
+          const { playerId, amount } = payload;
+          const idx = players.findIndex(pl => pl.id === playerId);
+          if (idx !== -1) movePlayerRetrograde(idx, amount);
+        } else if (payload.type === 'd5_recul') {
+          const { targetId } = payload;
+          const idx = players.findIndex((pl) => pl.id === targetId);
+          if (idx !== -1) movePlayerRetrograde(idx, 3);
+        } else if (payload.type === 'c1_sip') {
+          const { targetId } = payload;
+          players = applySips(players, targetId, 5);
+          const name = players.find(pl => pl.id === targetId)?.name || '';
+          log += `🎁 ${p.name} distribue 5 gorgées à ${name} !`;
+        } else if (payload.type === 'c1_depart') {
+          const { targetId } = payload;
+          const idx = players.findIndex(pl => pl.id === targetId);
+          if (idx !== -1) {
+            players[idx] = { ...players[idx], position: 0, isLockedAtStart: true };
+            log += `🏁 ${players[idx].name} refuse et retourne au DÉPART !`;
+          }
+        } else if (payload.type === 'c3_depart') {
+          const { targetId } = payload;
+          const idx = players.findIndex(pl => pl.id === targetId);
+          if (idx !== -1) {
+            players[idx] = { ...players[idx], position: 0, isLockedAtStart: true };
+            log += `🏁 ${players[idx].name} retourne au DÉPART !`;
+          }
+        } else if (payload.type === 'c4_recul') {
+          const { targetId } = payload;
+          const idx = players.findIndex(pl => pl.id === targetId);
+          if (idx !== -1) movePlayerRetrograde(idx, 4);
+        } else if (payload.type === 'c5_choices') {
+          const choices: { [playerId: string]: 'sip' | 'recul' } = payload.choices || {};
+          Object.entries(choices).forEach(([pid, choice]) => {
+            const idx = players.findIndex((pl) => pl.id === pid);
+            if (idx !== -1) {
+              if (choice === 'sip') {
+                players = applySips(players, pid, 2);
+                log += `🍺 ${players[idx].name} boit 2 gorgées ! `;
+              } else if (choice === 'recul') {
+                movePlayerRetrograde(idx, 5);
+              }
+            }
+          });
+        } else if (payload.type === 'depart_active') {
+          p.position = 0;
+          p.isLockedAtStart = true;
+          players[currentPlayerIndex] = p;
+          log += `🏁 ${p.name} retourne au DÉPART !`;
+        } else if (payload.type === 'sip_active') {
+          const amount = payload.amount || 6;
+          players = applySips(players, p.id, amount);
+          log += `🍺 ${p.name} boit cul sec (${amount} gorgées) !`;
+        } else if (payload.type === 'd4_recul') {
+          const targetIndex = players.findIndex((pl) => pl.card?.suit === 'carreau');
+          const finalIndex = targetIndex !== -1 ? targetIndex : currentPlayerIndex;
+          movePlayerRetrograde(finalIndex, 3);
+        }
+      } else if (card && card.category === 'movement') {
         log = `🎬 Effet de carte : ${card.title}. `;
       } else if (success) {
         p.challengesCompleted += 1;
         log = `✅ ${p.name} a réussi son défi !`;
+        players[currentPlayerIndex] = p;
       } else {
-        p.sipsCount += penalty;
+        players = applySips(players, p.id, penalty);
         log = `🍺 ${p.name} n'a pas relevé le défi et boit ${penalty} gorgée(s) !`;
       }
 
-      players[currentPlayerIndex] = p;
-
-      let nextScreen: GameState['activeScreen'] = 'board';
-      let activeCard = null;
-      let usedCardIds = prev.usedCardIds || [];
-
-      if (card) {
+      if (card && !payload) {
         if (card.id === 'd3') {
           p.position = 0;
+          p.isLockedAtStart = true;
           log += `🔄 ${p.name} est renvoyé à la case DÉPART !`;
           players[currentPlayerIndex] = p;
         } else if (card.id === 'd4') {
           const targetIndex = players.findIndex((pl) => pl.card?.suit === 'carreau');
           const finalIndex = targetIndex !== -1 ? targetIndex : currentPlayerIndex;
           const target = { ...players[finalIndex] };
-          const oldPos = target.position;
-          // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
-          const newPos = Math.max(0, oldPos - 3);
-          target.position = newPos;
-          players[finalIndex] = target;
-          log += ` ⬅️ ${target.name} recule de 3 cases sur : ${prev.tiles[newPos].name} !`;
-          
-          const landedTile = prev.tiles[newPos];
-          if (landedTile.type === 'card') {
-            nextScreen = 'card';
-            const drawRes = drawCardWithoutRepetition(usedCardIds);
-            activeCard = drawRes.card;
-            usedCardIds = drawRes.newUsedIds;
-          } else if (landedTile.type === 'bottle') {
-            nextScreen = 'bottle';
+          if (target.isPrisoner) {
+            log += ` (Mais ${target.name} est en cellule de dégrisement et ne bouge pas)`;
+          } else {
+            const oldPos = target.position;
+            const newPos = Math.max(0, oldPos - 3);
+            target.position = newPos;
+            if (newPos === 0) {
+              target.isLockedAtStart = true;
+            }
+            players[finalIndex] = target;
+            log += ` ⬅️ ${target.name} recule de 3 cases sur : ${prev.tiles[newPos].name} !`;
+
+            const landedTile = prev.tiles[newPos];
+            if (landedTile.type === 'card') {
+              nextScreen = 'card';
+              const drawRes = drawCardWithoutRepetition(usedCardIds);
+              activeCard = drawRes.card;
+              usedCardIds = drawRes.newUsedIds;
+            } else if (landedTile.type === 'bottle') {
+              nextScreen = 'bottle';
+            }
           }
         } else if (card.id === 's4') {
-          const oldPos = p.position;
-          // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
-          const newPos = Math.max(0, oldPos - 2);
-          p.position = newPos;
-          players[currentPlayerIndex] = p;
-          log += ` ⬅️ ${p.name} recule de 2 cases sur : ${prev.tiles[newPos].name} !`;
+          const targetIndex = players.findIndex((pl) => pl.card?.suit === 'pique');
+          const finalIndex = targetIndex !== -1 ? targetIndex : currentPlayerIndex;
+          const target = { ...players[finalIndex] };
+          if (target.isPrisoner) {
+            log += ` (Mais ${target.name} est en cellule de dégrisement et ne bouge pas)`;
+          } else {
+            const oldPos = target.position;
+            const newPos = Math.max(0, oldPos - 2);
+            target.position = newPos;
+            if (newPos === 0) {
+              target.isLockedAtStart = true;
+            }
+            players[finalIndex] = target;
+            log += ` ⬅️ ${target.name} recule de 2 cases sur : ${prev.tiles[newPos].name} !`;
 
-          const landedTile = prev.tiles[newPos];
-          if (landedTile.type === 'card') {
-            nextScreen = 'card';
-            const drawRes = drawCardWithoutRepetition(usedCardIds);
-            activeCard = drawRes.card;
-            usedCardIds = drawRes.newUsedIds;
-          } else if (landedTile.type === 'bottle') {
-            nextScreen = 'bottle';
+            const landedTile = prev.tiles[newPos];
+            if (landedTile.type === 'card') {
+              nextScreen = 'card';
+              const drawRes = drawCardWithoutRepetition(usedCardIds);
+              activeCard = drawRes.card;
+              usedCardIds = drawRes.newUsedIds;
+            } else if (landedTile.type === 'bottle') {
+              nextScreen = 'bottle';
+            }
           }
         }
       }
@@ -372,6 +814,9 @@ export function useGameState() {
         activeCard,
         activeScreen: nextScreen,
         usedCardIds,
+        activeRule,
+        linkedPlayers,
+        linkedTurns,
         logMessages: [log, ...prev.logMessages].slice(0, 15),
       };
     });
@@ -382,44 +827,19 @@ export function useGameState() {
     setState((prev) => {
       const p1 = prev.players[prev.currentPlayerIndex].name;
       const p2 = target.name;
-      const DUO_CHALLENGES = [
-        `🤝 Check Secret : ${p1} et ${p2} doivent inventer une poignée de main secrète complexe en 15 secondes. Échec = 2 gorgées chacun !`,
-        `👁️ Duel de regards : ${p1} et ${p2} se fixent dans les yeux. Le premier qui rit ou cligne boit 3 gorgées !`,
-        `🗣️ Chuchotement : ${p1} doit chuchoter à l'oreille de ${p2} un secret rigolo ou inavouable. Si l'un refuse : 1 shot !`,
-        `🥂 Les Bras Croisés : ${p1} et ${p2} doivent boire une gorgée en ayant leurs bras croisés l'un dans l'autre.`,
-        `🎭 Mime Chrono : ${p1} mime une action de soirée pour ${p2}. Si ${p2} ne trouve pas en 20s, ils boivent 2 gorgées chacun !`,
-        `🧠 Capitales Express : ${p1} et ${p2} citent des capitales d'Europe à tour de rôle. Le premier qui bloque boit 2 gorgées !`,
-        `🤫 Jeu des Synonymes : ${p1} donne un mot lié à la fête, ${p2} doit donner un synonyme en moins de 3s. Le perdant boit 2 gorgées.`,
-        `🍎 Dos à dos : ${p1} et ${p2} se tiennent dos à dos et doivent s'asseoir au sol puis se relever sans les mains. Raté = 3 gorgées chacun !`,
-        `👑 Flatterie mutuelle : ${p1} et ${p2} se font des compliments exagérés à tour de rôle sans rire. Le premier qui rit boit 2 gorgées.`,
-        `🤥 Vérité ou Mensonge : ${p1} raconte une anecdote folle. Si ${p2} devine correctement si c'est vrai, ${p1} boit 2 gorgées, sinon ${p2} boit 2.`,
-        `🕴️ Miroir Humain : ${p2} doit copier tous les mouvements de ${p1} pendant 15 secondes. Si l'un d'eux rit, il boit 2 gorgées.`,
-        `🦁 Cris sauvages : ${p1} et ${p2} imitent un cri d'animal en même temps. Le reste du groupe vote pour le plus ridicule. Le perdant boit 2.`,
-        `🤐 Sans les mains : ${p1} doit faire boire une gorgée à ${p2} directement au verre sans que ${p2} n'utilise ses mains. Échec = 2 gorgées chacun.`,
-        `🍿 Célébrité Mystère : ${p1} fait deviner une célébrité à ${p2} uniquement avec des adjectifs en 30s. Échec = 2 gorgées chacun.`,
-        `🤠 Shérif et Adjoint : ${p1} devient le shérif et ${p2} son adjoint pour 1 tour. Quand le shérif boit, l'adjoint boit aussi !`,
-        `🎈 Souffle magique : ${p1} et ${p2} maintiennent un papier en l'air en soufflant dessus alternativement. Le premier qui échoue boit 2.`,
-        `🤐 Questions rapides : ${p1} pose 3 questions rapides à ${p2}. ${p2} doit répondre sans dire "oui", "non" ni hésiter. Sinon, il boit 2 !`,
-        `🎯 Énigme de l'Apéro : ${p1} doit poser une énigme à ${p2}. Si ${p2} trouve, ${p1} boit 3 gorgées. Sinon, c'est ${p2} qui boit 3 !`,
-        `🎶 Duo de Karaoké : ${p1} commence à chanter une chanson connue, ${p2} doit chanter la suite immédiate sans hésiter. Sinon : 2 gorgées.`,
-        `🍦 Choix cornélien : ${p1} demande à ${p2} de choisir entre deux dilemmes horribles. Le reste du groupe vote. La minorité boit 2 gorgées.`,
-        `🧠 Quiz Culture : ${p1} pose une question de culture générale à ${p2}. Si ${p2} répond faux en 5s, il boit 3 gorgées. Sinon, ${p1} boit 3 !`,
-        `⚡ Suite Logique : ${p1} donne 3 nombres d'une suite logique (ex: 3, 6, 12...), ${p2} doit deviner le 4ème en moins de 5 secondes. Échec = 3 gorgées pour ${p2} !`,
-        `🧪 Énigme du Sphinx : ${p1} demande à ${p2} : "Qu'est-ce qui a des clés mais ne peut ouvrir aucune serrure ?" (Réponse : Un piano / une chanson). Échec = 2 gorgées pour ${p2} !`,
-        `✊ Chifoumi de l'Apéro : ${p1} et ${p2} s'affrontent au Pierre-Feuille-Ciseaux en un coup gagnant. Le perdant boit 2 gorgées !`,
-        `✌️ Chifoumi de la Vengeance : ${p1} et ${p2} jouent au Pierre-Feuille-Ciseaux en 3 manches. Le perdant boit 3 gorgées !`,
-        `✋ Chifoumi Aléatoire : ${p1} et ${p2} jouent au Pierre-Feuille-Ciseaux. Celui qui perd boit 2 gorgées, et le gagnant distribue 1 gorgée !`
-      ];
       let usedDuoChallenges = prev.usedDuoChallenges || [];
       const drawRes = drawDuoChallengeWithoutRepetition(usedDuoChallenges, DUO_CHALLENGES.length);
-      const randomChallenge = DUO_CHALLENGES[drawRes.index];
+      const challengeObj = DUO_CHALLENGES[drawRes.index];
+      const challengeText = challengeObj.template.replace(/{p1}/g, p1).replace(/{p2}/g, p2);
       usedDuoChallenges = drawRes.newUsedIndices;
       const log = `🍾 Bouteille : ${p1} doit effectuer une action avec ${p2} !`;
       
       return {
         ...prev,
         selectedBottleTargetId: target.id,
-        activeDuoChallenge: randomChallenge,
+        activeDuoChallenge: challengeText,
+        activeDuoChallengeType: challengeObj.type,
+        activeDuoChallengePenalty: challengeObj.penalty,
         activeScreen: 'minigame',
         usedDuoChallenges,
         logMessages: [log, ...prev.logMessages].slice(0, 15),
@@ -430,7 +850,7 @@ export function useGameState() {
   // Buy or upgrade the bar the player landed on
   const resolveBar = (success: boolean) => {
     setState((prev) => {
-      const players = [...prev.players];
+      let players = [...prev.players];
       const currentPlayer = { ...players[prev.currentPlayerIndex] };
       const tiles = [...prev.tiles];
       const currentTile = { ...tiles[currentPlayer.position] };
@@ -446,14 +866,14 @@ export function useGameState() {
           log = `⭐ ${currentPlayer.name} améliore ${currentTile.name} au Niveau ${currentTile.level} !`;
         }
         currentPlayer.challengesCompleted += 1;
+        players[prev.currentPlayerIndex] = currentPlayer;
       } else {
         const penalty = currentTile.price || 3;
-        currentPlayer.sipsCount += penalty;
+        players = addSips(players, currentPlayer.id, penalty, prev.linkedPlayers, prev.linkedTurns);
         log = `🍺 ${currentPlayer.name} rate le défi pour ${currentTile.name} et boit ${penalty} gorgées !`;
       }
 
       tiles[currentTile.id] = currentTile;
-      players[prev.currentPlayerIndex] = currentPlayer;
 
       return {
         ...prev,
@@ -464,9 +884,14 @@ export function useGameState() {
     });
   };
 
-  // Part 1 of resolveBarScenario: Handles success, fail, youngest_success, youngest_fail
+  /**
+   * Résout une action ou étape d'un scénario de bar interactif aléatoire.
+   *
+   * @param action Le type de résolution (achat réussi, échec, reculs, devinette, etc.)
+   * @param payload Données additionnelles requises pour la résolution (cibles, types de sentence, etc.)
+   */
   const resolveBarScenario = (
-    action: 'success' | 'fail' | 'recule3' | 'youngest_fail' | 'youngest_success' | 'cul_sec_others' | 'cul_sec_all' | 'guess' | 'laugh' | 'recule_active' | 'laugh_recule' | 'caught_recule' | 'set_targets',
+    action: 'success' | 'fail' | 'recule3' | 'youngest_fail' | 'youngest_success' | 'cul_sec_others' | 'cul_sec_all' | 'guess' | 'laugh' | 'recule_active' | 'laugh_recule' | 'caught_recule' | 'set_targets' | 'laugh_penalty' | 'resolve_custom',
     payload?: any
   ) => {
     setState((prev) => {
@@ -474,6 +899,7 @@ export function useGameState() {
         return {
           ...prev,
           barScenarioTargetIds: payload?.targets || [],
+          barScenarioStage: payload?.stage !== undefined ? payload.stage : prev.barScenarioStage,
         };
       }
 
@@ -487,24 +913,67 @@ export function useGameState() {
       let barScenarioStage = prev.barScenarioStage;
 
       const penalty = currentTile.price || 3;
+      const sipsToAdd: { [playerId: string]: number } = {};
 
-      if (action === 'success') {
+      if (action === 'resolve_custom') {
+        const buy = payload?.buy;
+        if (buy) {
+          currentTile.ownerId = currentPlayer.id;
+          currentTile.level = 1;
+          currentPlayer.challengesCompleted += 1;
+        }
+        log = payload?.log || '';
+        if (payload?.sips) {
+          Object.entries(payload.sips).forEach(([pid, amount]) => {
+            if ((amount as number) > 0) sipsToAdd[pid] = amount as number;
+          });
+        }
+        if (payload?.movements) {
+          Object.entries(payload.movements).forEach(([pid, move]: [string, any]) => {
+            const idx = players.findIndex((pl) => pl.id === pid);
+            if (idx !== -1) {
+              const pl = { ...players[idx] };
+              if (!pl.isPrisoner || move.isPrisoner) {
+                if (move.position !== undefined) {
+                  pl.position = move.position;
+                  if (move.position === 0) pl.isLockedAtStart = true;
+                } else if (move.recul !== undefined) {
+                  const newPos = Math.max(0, pl.position - move.recul);
+                  pl.position = newPos;
+                  if (newPos === 0) pl.isLockedAtStart = true;
+                }
+                if (move.isPrisoner !== undefined) {
+                  pl.isPrisoner = move.isPrisoner;
+                  pl.prisonTurns = 0;
+                }
+                players[idx] = pl;
+                if (idx === currentPlayerIndex) {
+                  currentPlayer.position = pl.position;
+                  currentPlayer.isLockedAtStart = pl.isLockedAtStart;
+                  currentPlayer.isPrisoner = pl.isPrisoner;
+                  currentPlayer.prisonTurns = pl.prisonTurns;
+                }
+              }
+            }
+          });
+        }
+        nextIndex = (currentPlayerIndex + 1) % players.length;
+      } else if (action === 'success') {
         currentTile.ownerId = currentPlayer.id;
         currentTile.level = 1;
         currentPlayer.challengesCompleted += 1;
         log = `🏢 ${currentPlayer.name} réussit le défi et achète ${currentTile.name} !`;
         // Pour le scénario 4, le joueur désigné boit ses 4 gorgées
         if (prev.activeBarScenario === 4 && prev.barScenarioTargetIds?.[0]) {
-          const targetIdx = players.findIndex((pl) => pl.id === prev.barScenarioTargetIds?.[0]);
-          if (targetIdx !== -1) {
-            players[targetIdx] = { ...players[targetIdx], sipsCount: players[targetIdx].sipsCount + 4 };
-            log += ` 🍺 ${players[targetIdx].name} boit 4 gorgées !`;
-          }
+          const targetId = prev.barScenarioTargetIds[0];
+          sipsToAdd[targetId] = 4;
+          const targetName = players.find(pl => pl.id === targetId)?.name || '';
+          log += ` 🍺 ${targetName} boit 4 gorgées !`;
         }
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'fail') {
         const actualPenalty = payload?.penalty !== undefined ? payload.penalty : penalty;
-        currentPlayer.sipsCount += actualPenalty;
+        sipsToAdd[currentPlayer.id] = actualPenalty;
         log = `🍺 ${currentPlayer.name} rate le défi et boit ${actualPenalty} gorgée(s) !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'youngest_success') {
@@ -514,8 +983,7 @@ export function useGameState() {
         const youngestId = payload?.youngestId;
         const youngestPlayer = players.find((pl) => pl.id === youngestId);
         if (youngestPlayer) {
-          const yIdx = players.findIndex((pl) => pl.id === youngestId);
-          players[yIdx] = { ...youngestPlayer, sipsCount: youngestPlayer.sipsCount + 6 };
+          sipsToAdd[youngestId] = 6;
           log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Cul Sec 🍺 pour le plus jeune (${youngestPlayer.name}) !`;
         }
         nextIndex = (currentPlayerIndex + 1) % players.length;
@@ -527,7 +995,11 @@ export function useGameState() {
         const youngestPlayer = players.find((pl) => pl.id === youngestId);
         if (youngestPlayer) {
           const yIdx = players.findIndex((pl) => pl.id === youngestId);
-          players[yIdx] = { ...youngestPlayer, position: 0 };
+          players[yIdx] = { ...youngestPlayer, position: 0, isLockedAtStart: true };
+          if (yIdx === currentPlayerIndex) {
+            currentPlayer.position = 0;
+            currentPlayer.isLockedAtStart = true;
+          }
           log = `🚨 Le plus jeune (${youngestPlayer.name}) a refusé et retourne au DÉPART ! ${currentPlayer.name} achète ${currentTile.name}.`;
         }
         nextIndex = (currentPlayerIndex + 1) % players.length;
@@ -537,7 +1009,7 @@ export function useGameState() {
         currentPlayer.challengesCompleted += 1;
         players.forEach((pl, idx) => {
           if (idx !== currentPlayerIndex) {
-            players[idx] = { ...pl, sipsCount: pl.sipsCount + 6 };
+            sipsToAdd[pl.id] = 6;
           }
         });
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Tous les autres boivent un Cul Sec 🍻 !`;
@@ -546,8 +1018,8 @@ export function useGameState() {
         currentTile.ownerId = currentPlayer.id;
         currentTile.level = 1;
         currentPlayer.challengesCompleted += 1;
-        players.forEach((pl, idx) => {
-          players[idx] = { ...pl, sipsCount: pl.sipsCount + 6 };
+        players.forEach((pl) => {
+          sipsToAdd[pl.id] = 6;
         });
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Tout le monde boit un Cul Sec 🍻 !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
@@ -557,10 +1029,16 @@ export function useGameState() {
         currentPlayer.challengesCompleted += 1;
         players.forEach((pl, idx) => {
           if (idx !== currentPlayerIndex) {
+            if (pl.isPrisoner) {
+              return;
+            }
             const oldPos = pl.position;
-            // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
             const newPos = Math.max(0, oldPos - 3);
-            players[idx] = { ...pl, position: newPos };
+            players[idx] = { 
+              ...pl, 
+              position: newPos,
+              isLockedAtStart: newPos === 0 ? true : pl.isLockedAtStart
+            };
           }
         });
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! Tous les autres reculent de 3 cases ⬅️ !`;
@@ -571,19 +1049,18 @@ export function useGameState() {
         currentPlayer.challengesCompleted += 1;
         const laughIds: string[] = payload?.laughIds || [];
         laughIds.forEach((id) => {
-          const idx = players.findIndex((pl) => pl.id === id);
-          if (idx !== -1) {
-            players[idx] = { ...players[idx], sipsCount: players[idx].sipsCount + 6 };
-          }
+          sipsToAdd[id] = 6;
         });
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name}. Les rieurs boivent un Cul Sec 🍻 !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'recule_active') {
         const recul = payload?.recul !== undefined ? payload.recul : 2;
         const oldPos = currentPlayer.position;
-        // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
         const newPos = Math.max(0, oldPos - recul);
         currentPlayer.position = newPos;
+        if (newPos === 0) {
+          currentPlayer.isLockedAtStart = true;
+        }
         log = `⬅️ ${currentPlayer.name} rate le défi et recule de ${recul} cases sur : ${prev.tiles[newPos].name} !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'laugh_recule') {
@@ -593,11 +1070,14 @@ export function useGameState() {
         const laughIds: string[] = payload?.laughIds || [];
         laughIds.forEach((id) => {
           const idx = players.findIndex((pl) => pl.id === id);
-          if (idx !== -1) {
+          if (idx !== -1 && !players[idx].isPrisoner) {
             const oldPos = players[idx].position;
-            // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
             const newPos = Math.max(0, oldPos - 3);
-            players[idx] = { ...players[idx], position: newPos };
+            players[idx] = { 
+              ...players[idx], 
+              position: newPos,
+              isLockedAtStart: newPos === 0 ? true : players[idx].isLockedAtStart
+            };
           }
         });
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! Les rieurs reculent de 3 cases ⬅️ !`;
@@ -609,11 +1089,14 @@ export function useGameState() {
         const caughtIds: string[] = payload?.caughtIds || [];
         caughtIds.forEach((id) => {
           const idx = players.findIndex((pl) => pl.id === id);
-          if (idx !== -1) {
+          if (idx !== -1 && !players[idx].isPrisoner) {
             const oldPos = players[idx].position;
-            // Limitation de la marche arrière pour ne pas dépasser la case DÉPART (0)
             const newPos = Math.max(0, oldPos - 3);
-            players[idx] = { ...players[idx], position: newPos };
+            players[idx] = { 
+              ...players[idx], 
+              position: newPos,
+              isLockedAtStart: newPos === 0 ? true : players[idx].isLockedAtStart
+            };
           }
         });
         const caughtNames = caughtIds.map(id => players.find(p => p.id === id)?.name).join(', ');
@@ -633,36 +1116,67 @@ export function useGameState() {
           barScenarioStage,
           logMessages: [log, ...prev.logMessages].slice(0, 15),
         };
+      } else if (action === 'laugh_penalty') {
+        const { playerId, penaltyType } = payload;
+        const targetIdx = players.findIndex((pl) => pl.id === playerId);
+        if (targetIdx !== -1) {
+          if (penaltyType === 'cul_sec') {
+            sipsToAdd[playerId] = 6;
+            log = `🍺 ${players[targetIdx].name} boit Cul Sec !`;
+          } else {
+            players[targetIdx] = { ...players[targetIdx], position: 0, isLockedAtStart: true };
+            if (targetIdx === currentPlayerIndex) {
+              currentPlayer.position = 0;
+              currentPlayer.isLockedAtStart = true;
+            }
+            log = `🚨 ${players[targetIdx].name} retourne au DÉPART !`;
+          }
+        }
+        const remainingTargets = (prev.barScenarioTargetIds || []).filter(id => id !== playerId);
+        if (remainingTargets.length > 0) {
+          let finalPlayers = players;
+          Object.entries(sipsToAdd).forEach(([pid, amount]) => {
+            finalPlayers = addSips(finalPlayers, pid, amount, prev.linkedPlayers, prev.linkedTurns);
+          });
+          return {
+            ...prev,
+            players: finalPlayers,
+            barScenarioTargetIds: remainingTargets,
+            logMessages: [log, ...prev.logMessages].slice(0, 15),
+          };
+        } else {
+          const isSuccess = playerId !== currentPlayer.id;
+          if (isSuccess) {
+            currentTile.ownerId = currentPlayer.id;
+            currentTile.level = 1;
+            currentPlayer.challengesCompleted += 1;
+            log += ` 🏢 ${currentPlayer.name} réussit le défi et achète ${currentTile.name} !`;
+          } else {
+            log += ` ❌ Défi raté ! ${currentPlayer.name} n'achète pas le bar.`;
+          }
+          nextIndex = (currentPlayerIndex + 1) % players.length;
+        }
       }
 
       tiles[currentTile.id] = currentTile;
       players[currentPlayerIndex] = currentPlayer;
 
-      let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
-
-      const finalPlayers = players.map((pl, idx) => {
-        if (idx === nextIndex && pl.isPrisoner) {
-          const updated = { ...pl };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-            nextLog = `🔓 ${pl.name} a fini de cuver et sort !`;
-          } else {
-            updated.prisonTurns += 1;
-            nextLog = `🚨 ${pl.name} est en cellule et passe son tour !`;
-          }
-          return updated;
-        }
-        return pl;
+      // Apply sips additions with linking logic
+      let finalPlayers = players;
+      Object.entries(sipsToAdd).forEach(([pid, amount]) => {
+        finalPlayers = addSips(finalPlayers, pid, amount, prev.linkedPlayers, prev.linkedTurns);
       });
+
+      let nextLog = `C'est au tour de ${finalPlayers[nextIndex].name}.`;
+      if (finalPlayers[nextIndex].isPrisoner) {
+        nextLog = `🚨 ${finalPlayers[nextIndex].name} est en cellule de dégrisement ! (Tentative ${finalPlayers[nextIndex].prisonTurns}/3)`;
+      }
 
       return {
         ...prev,
+        ...getNextTurnState(prev, nextIndex),
         players: finalPlayers,
         tiles,
-        currentPlayerIndex: nextIndex,
-        diceValue: null,
-        activeScreen: 'board',
         activeBarScenario: undefined,
         barScenarioTargetIds: undefined,
         barScenarioWinnerId: undefined,
@@ -672,19 +1186,95 @@ export function useGameState() {
     });
   };
 
-  // Pay jail fine of 2 shots to get out immediately
+  /**
+   * Pay jail fine (2 shots / 6 sips) to exit jail immediately.
+   * This can be done at the beginning of the turn, or as a forced option after 3 failed attempts.
+   * Freeing the player keeps the turn active so they can roll the dice and move on the same turn.
+   */
   const payJailFine = () => {
     setState((prev) => {
-      const players = [...prev.players];
+      let players = [...prev.players];
       const p = { ...players[prev.currentPlayerIndex] };
       p.isPrisoner = false;
-      p.sipsCount += 6; // 2 shots roughly = 6 sips in penalty weight
+      p.prisonTurns = 0;
       players[prev.currentPlayerIndex] = p;
+      players = addSips(players, p.id, 6, prev.linkedPlayers, prev.linkedTurns);
       const log = `🔓 ${p.name} paye sa caution de 2 shots (6 gorgées) et sort de dégrisement !`;
       return {
         ...prev,
         players,
+        jailRollResult: null,
         logMessages: [log, ...prev.logMessages].slice(0, 15),
+      };
+    });
+  };
+
+  // Roll dice while in jail to try and get a 6
+  const tryJailRoll = () => {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    if (roll === 6) {
+      // Free player, they can roll normally to move
+      setState((prev) => {
+        const players = [...prev.players];
+        const p = { ...players[prev.currentPlayerIndex] };
+        p.isPrisoner = false;
+        p.prisonTurns = 0;
+        players[prev.currentPlayerIndex] = p;
+        const log = `🎲 ${p.name} obtient un 6, est libéré(e) de dégrisement et peut relancer le dé !`;
+        return {
+          ...prev,
+          players,
+          jailRollResult: null,
+          logMessages: [log, ...prev.logMessages].slice(0, 15),
+        };
+      });
+    } else {
+      // Failed attempt
+      setState((prev) => {
+        const players = [...prev.players];
+        const p = { ...players[prev.currentPlayerIndex] };
+        p.prisonTurns += 1;
+        players[prev.currentPlayerIndex] = p;
+        const log = `🎲 ${p.name} tente de faire un 6 mais obtient ${roll}. (Tentative ${p.prisonTurns}/3)`;
+        return {
+          ...prev,
+          players,
+          jailRollResult: roll,
+          logMessages: [log, ...prev.logMessages].slice(0, 15),
+        };
+      });
+    }
+  };
+
+  // Resolve roll in jail (non-6) and advance turn
+  const resolveJailRollResult = () => {
+    nextTurn();
+  };
+
+  // Choose to go back to START (position 0) after failing 3 times
+  const returnToStartFromJail = () => {
+    setState((prev) => {
+      const players = [...prev.players];
+      const p = { ...players[prev.currentPlayerIndex] };
+      p.isPrisoner = false;
+      p.prisonTurns = 0;
+      p.position = 0; // case DÉPART
+      p.isLockedAtStart = true;
+      players[prev.currentPlayerIndex] = p;
+      const log = `🏁 ${p.name} refuse de boire et retourne à la case DÉPART.`;
+
+      const nextIndex = (prev.currentPlayerIndex + 1) % players.length;
+      let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
+      if (players[nextIndex].isPrisoner) {
+        nextLog = `🚨 ${players[nextIndex].name} est en cellule de dégrisement ! (Tentative ${players[nextIndex].prisonTurns}/3)`;
+      }
+
+      return {
+        ...prev,
+        ...getNextTurnState(prev, nextIndex),
+        players,
+        activeScreen: 'board',
+        logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
       };
     });
   };
@@ -695,30 +1285,13 @@ export function useGameState() {
       const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
       const nextPlayer = prev.players[nextIndex];
       let log = `C'est au tour de ${nextPlayer.name}.`;
-
-      const players = prev.players.map((p, idx) => {
-        if (idx === nextIndex && p.isPrisoner) {
-          const updated = { ...p };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-            log = `🔓 ${p.name} a fini de cuver et sort de dégrisement !`;
-          } else {
-            updated.prisonTurns += 1;
-            log = `🚨 ${p.name} est en cellule de dégrisement et passe son tour (ou paye sa caution) !`;
-          }
-          return updated;
-        }
-        return p;
-      });
+      if (nextPlayer.isPrisoner) {
+        log = `🚨 ${nextPlayer.name} est en cellule de dégrisement ! (Tentative ${nextPlayer.prisonTurns}/3)`;
+      }
 
       return {
         ...prev,
-        players,
-        currentPlayerIndex: nextIndex,
-        diceValue: null,
-        selectedBottleTargetId: null,
-        activeDuoChallenge: null,
+        ...getNextTurnState(prev, nextIndex),
         activeScreen: 'board',
         logMessages: [log, ...prev.logMessages].slice(0, 15),
       };
@@ -796,29 +1369,16 @@ export function useGameState() {
         diceValue = null;
       }
 
-      const finalPlayers = players.map((p, idx) => {
-        if (idx === nextIndex && p.isPrisoner && nextIndex !== prev.currentPlayerIndex) {
-          const updated = { ...p };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-          } else {
-            updated.prisonTurns += 1;
-          }
-          return updated;
-        }
-        return p;
-      });
-
       return {
         ...prev,
-        players: finalPlayers,
+        players,
         tiles,
         currentPlayerIndex: nextIndex,
         diceValue,
         activeScreen: nextScreen,
         selectedBottleTargetId: null,
         activeDuoChallenge: null,
+        jailRollResult: null,
         logMessages: [log, ...prev.logMessages].slice(0, 15),
       };
     });
@@ -858,11 +1418,11 @@ export function useGameState() {
    */
   const paySipsAndNextTurn = (amount: number) => {
     setState((prev) => {
-      const players = [...prev.players];
+      let players = [...prev.players];
       const currentPlayerIndex = prev.currentPlayerIndex;
-      const p = { ...players[currentPlayerIndex] };
-      p.sipsCount += amount;
-      players[currentPlayerIndex] = p;
+      const p = prev.players[currentPlayerIndex];
+
+      players = addSips(players, p.id, amount, prev.linkedPlayers, prev.linkedTurns);
 
       const log = amount > 0 
         ? `🍺 ${p.name} paye sa pénalité de ${amount} gorgée(s).`
@@ -870,31 +1430,15 @@ export function useGameState() {
 
       const nextIndex = (currentPlayerIndex + 1) % prev.players.length;
       let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
-
-      const finalPlayers = players.map((pl, idx) => {
-        if (idx === nextIndex && pl.isPrisoner) {
-          const updated = { ...pl };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-            nextLog = `🔓 ${pl.name} a fini de cuver et sort !`;
-          } else {
-            updated.prisonTurns += 1;
-            nextLog = `🚨 ${pl.name} est en cellule et passe son tour !`;
-          }
-          return updated;
-        }
-        return pl;
-      });
+      if (players[nextIndex].isPrisoner) {
+        nextLog = `🚨 ${players[nextIndex].name} est en cellule de dégrisement ! (Tentative ${players[nextIndex].prisonTurns}/3)`;
+      }
 
       return {
         ...prev,
-        players: finalPlayers,
-        currentPlayerIndex: nextIndex,
-        diceValue: null,
+        ...getNextTurnState(prev, nextIndex),
+        players,
         activeScreen: 'board',
-        selectedBottleTargetId: null,
-        activeDuoChallenge: null,
         logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
       };
     });
@@ -906,47 +1450,87 @@ export function useGameState() {
    * @param loserId The ID of the player who lost, or 'both' for both players.
    * @param penalty The number of sips to apply as penalty.
    */
-  const resolveDuoPenalty = (loserId: string, penalty: number) => {
+  const resolveDuoPenalty = (
+    loserId: string,
+    penalty: number,
+    payload?: {
+      sips?: { [playerId: string]: number };
+      movements?: { [playerId: string]: { recul?: number; position?: number } };
+    }
+  ) => {
     setState((prev) => {
-      const players = prev.players.map((p) => {
-        if (loserId === 'both') {
-          if (p.id === prev.players[prev.currentPlayerIndex].id || p.id === prev.selectedBottleTargetId) {
-            return { ...p, sipsCount: p.sipsCount + penalty };
-          }
-        } else if (p.id === loserId) {
-          return { ...p, sipsCount: p.sipsCount + penalty };
+      let players = [...prev.players];
+      let log = '';
+
+      if (payload) {
+        // Apply custom sips
+        if (payload.sips) {
+          Object.entries(payload.sips).forEach(([pid, amount]) => {
+            if (amount > 0) {
+              players = addSips(players, pid, amount, prev.linkedPlayers, prev.linkedTurns);
+              const name = players.find(p => p.id === pid)?.name || '';
+              log += `🍺 ${name} boit ${amount} G. `;
+            }
+          });
         }
-        return p;
-      });
+
+        // Apply custom movements
+        if (payload.movements) {
+          Object.entries(payload.movements).forEach(([pid, move]) => {
+            const idx = players.findIndex((pl) => pl.id === pid);
+            if (idx !== -1) {
+              const pl = { ...players[idx] };
+              if (!pl.isPrisoner) {
+                if (move.position !== undefined) {
+                  pl.position = move.position;
+                  if (move.position === 0) {
+                    pl.isLockedAtStart = true;
+                  }
+                  log += `🏁 ${pl.name} retourne au DÉPART. `;
+                } else if (move.recul !== undefined) {
+                  const newPos = Math.max(0, pl.position - move.recul);
+                  pl.position = newPos;
+                  if (newPos === 0) {
+                    pl.isLockedAtStart = true;
+                  }
+                  log += `⬅️ ${pl.name} recule de ${move.recul} cases sur ${prev.tiles[newPos].name}. `;
+                }
+                players[idx] = pl;
+              } else {
+                log += `(Mais ${pl.name} est en cellule et ne recule pas) `;
+              }
+            }
+          });
+        }
+      } else {
+        if (loserId === 'both') {
+          const p1Id = prev.players[prev.currentPlayerIndex].id;
+          const p2Id = prev.selectedBottleTargetId;
+          players = addSips(players, p1Id, penalty, prev.linkedPlayers, prev.linkedTurns);
+          if (p2Id) {
+            players = addSips(players, p2Id, penalty, prev.linkedPlayers, prev.linkedTurns);
+          }
+          log = `🍻 ${prev.players[prev.currentPlayerIndex].name} et ${p2Id ? players.find(p => p.id === p2Id)?.name : 'Adversaire'} boivent ${penalty} gorgée(s) !`;
+        } else if (loserId !== 'none' && loserId !== '') {
+          players = addSips(players, loserId, penalty, prev.linkedPlayers, prev.linkedTurns);
+          log = `🍺 ${players.find(p => p.id === loserId)?.name} boit ${penalty} gorgée(s) !`;
+        } else {
+          log = `🤝 Défi réussi, personne ne boit !`;
+        }
+      }
 
       const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
       let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
-
-      const finalPlayers = players.map((pl, idx) => {
-        if (idx === nextIndex && pl.isPrisoner) {
-          const updated = { ...pl };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-            nextLog = `🔓 ${pl.name} a fini de cuver et sort !`;
-          } else {
-            updated.prisonTurns += 1;
-            nextLog = `🚨 ${pl.name} est en cellule et passe son tour !`;
-          }
-          return updated;
-        }
-        return pl;
-      });
+      if (players[nextIndex].isPrisoner) {
+        nextLog = `🚨 ${players[nextIndex].name} est en cellule de dégrisement ! (Tentative ${players[nextIndex].prisonTurns}/3)`;
+      }
 
       return {
         ...prev,
-        players: finalPlayers,
-        currentPlayerIndex: nextIndex,
-        diceValue: null,
+        ...getNextTurnState(prev, nextIndex),
+        players,
         activeScreen: 'board',
-        selectedBottleTargetId: null,
-        activeDuoChallenge: null,
-        logMessages: [nextLog, ...prev.logMessages].slice(0, 15),
+        logMessages: [nextLog, log.trim(), ...prev.logMessages].filter(Boolean).slice(0, 15),
       };
     });
   };
@@ -968,40 +1552,24 @@ export function useGameState() {
    */
   const resolveTourneeGenerale = () => {
     setState((prev) => {
-      const players = prev.players.map((p) => ({
-        ...p,
-        sipsCount: p.sipsCount + 1,
-      }));
+      let players = prev.players;
+      players.forEach((p) => {
+        players = addSips(players, p.id, 1, prev.linkedPlayers, prev.linkedTurns);
+      });
 
       const log = `🥂 Tournée Générale ! Tout le monde prend 1 gorgée !`;
 
       const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
       let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
-
-      const finalPlayers = players.map((pl, idx) => {
-        if (idx === nextIndex && pl.isPrisoner) {
-          const updated = { ...pl };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-            nextLog = `🔓 ${pl.name} a fini de cuver et sort !`;
-          } else {
-            updated.prisonTurns += 1;
-            nextLog = `🚨 ${pl.name} est en cellule et passe son tour !`;
-          }
-          return updated;
-        }
-        return pl;
-      });
+      if (players[nextIndex].isPrisoner) {
+        nextLog = `🚨 ${players[nextIndex].name} est en cellule de dégrisement ! (Tentative ${players[nextIndex].prisonTurns}/3)`;
+      }
 
       return {
         ...prev,
-        players: finalPlayers,
-        currentPlayerIndex: nextIndex,
-        diceValue: null,
+        ...getNextTurnState(prev, nextIndex),
+        players,
         activeScreen: 'board',
-        selectedBottleTargetId: null,
-        activeDuoChallenge: null,
         logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
       };
     });
@@ -1015,41 +1583,21 @@ export function useGameState() {
     setState((prev) => {
       if (!prev.pendingTransfer) return prev;
       const { toId, penalty } = prev.pendingTransfer;
-      const players = prev.players.map((p) => {
-        if (p.id === toId) {
-          return { ...p, sipsCount: p.sipsCount + penalty };
-        }
-        return p;
-      });
+      let players = [...prev.players];
+      players = addSips(players, toId, penalty, prev.linkedPlayers, prev.linkedTurns);
 
       const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
-      const nextPlayer = players[nextIndex];
-      const log = `💘 ${players.find((p) => p.id === toId)?.name} a ACCEPTÉ le transfert et boit ${penalty} ${penalty > 1 ? 'gorgées' : 'gorgée'}.`;
-      let nextLog = `C'est au tour de ${nextPlayer.name}.`;
+      let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
+      if (players[nextIndex].isPrisoner) {
+        nextLog = `🚨 ${players[nextIndex].name} est en cellule de dégrisement ! (Tentative ${players[nextIndex].prisonTurns}/3)`;
+      }
 
-      const finalPlayers = players.map((p, idx) => {
-        if (idx === nextIndex && p.isPrisoner) {
-          const updated = { ...p };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-            nextLog = `🔓 ${p.name} a fini de cuver et sort de dégrisement !`;
-          } else {
-            updated.prisonTurns += 1;
-            nextLog = `🚨 ${p.name} est en cellule de dégrisement et passe son tour (ou paye sa caution) !`;
-          }
-          return updated;
-        }
-        return p;
-      });
+      const log = `💘 ${players.find((p) => p.id === toId)?.name} a ACCEPTÉ le transfert et boit ${penalty} ${penalty > 1 ? 'gorgées' : 'gorgée'}.`;
 
       return {
         ...prev,
-        players: finalPlayers,
-        currentPlayerIndex: nextIndex,
-        diceValue: null,
-        selectedBottleTargetId: null,
-        activeDuoChallenge: null,
+        ...getNextTurnState(prev, nextIndex),
+        players,
         activeScreen: 'board',
         pendingTransfer: null,
         logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
@@ -1068,39 +1616,23 @@ export function useGameState() {
       const { toId } = prev.pendingTransfer;
       const players = prev.players.map((p) => {
         if (p.id === toId) {
-          return { ...p, position: 0 };
+          return { ...p, position: 0, isLockedAtStart: true };
         }
         return p;
       });
 
       const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
-      const nextPlayer = players[nextIndex];
-      const log = `❌ ${players.find((p) => p.id === toId)?.name} a REFUSÉ le transfert et retourne à la case DÉPART 🏁 !`;
-      let nextLog = `C'est au tour de ${nextPlayer.name}.`;
+      let nextLog = `C'est au tour de ${players[nextIndex].name}.`;
+      if (players[nextIndex].isPrisoner) {
+        nextLog = `🚨 ${players[nextIndex].name} est en cellule de dégrisement ! (Tentative ${players[nextIndex].prisonTurns}/3)`;
+      }
 
-      const finalPlayers = players.map((p, idx) => {
-        if (idx === nextIndex && p.isPrisoner) {
-          const updated = { ...p };
-          if (updated.prisonTurns >= 1) {
-            updated.isPrisoner = false;
-            updated.prisonTurns = 0;
-            nextLog = `🔓 ${p.name} a fini de cuver et sort de dégrisement !`;
-          } else {
-            updated.prisonTurns += 1;
-            nextLog = `🚨 ${p.name} est en cellule de dégrisement et passe son tour (ou paye sa caution) !`;
-          }
-          return updated;
-        }
-        return p;
-      });
+      const log = `❌ ${players.find((p) => p.id === toId)?.name} a REFUSÉ le transfert et retourne à la case DÉPART 🏁 !`;
 
       return {
         ...prev,
-        players: finalPlayers,
-        currentPlayerIndex: nextIndex,
-        diceValue: null,
-        selectedBottleTargetId: null,
-        activeDuoChallenge: null,
+        ...getNextTurnState(prev, nextIndex),
+        players,
         activeScreen: 'board',
         pendingTransfer: null,
         logMessages: [nextLog, log, ...prev.logMessages].slice(0, 15),
@@ -1126,6 +1658,9 @@ export function useGameState() {
     resolveBar,
     resolveBarScenario,
     payJailFine,
+    tryJailRoll,
+    resolveJailRollResult,
+    returnToStartFromJail,
     nextTurn,
     sendToJail,
     usePlayerPower,

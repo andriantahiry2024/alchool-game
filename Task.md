@@ -524,5 +524,214 @@
     - [x] Vérification de la syntaxe : Vérifier que le typage de l'action 'set_targets' est correct et compile.
     - [x] Test unitaire (jest DOM) : S'assurer que les E2E tests Playwright passent à 100%.
 
+## Phase 36 : Résolution et vérification de la marche arrière des cartes fétiches (d4, s4, d3)
+* **Vérification et Animation du Recul des Cartes Fétiches**
+    - [x] Implémentation :
+        1. Vérifier si pl.card?.suit est correctement accessible lors du tirage de d4.
+        2. Assurer que le déplacement rétrograde (recul de cases) sur les cartes mystères met bien à jour la position du joueur ciblé de manière visible, et qu'il n'y a pas d'écrasement d'état.
+        3. Mettre à jour s4 (Le 10 de Pique ♠️) pour reculer le joueur possédant la carte fétiche de Pique ♠️ (ou le joueur actif si aucun Pique en jeu) de 2 cases, pour la cohérence avec d4.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les règles de résolution et de ciblage des cartes de mouvement.
+    - [x] Vérification des imports : S'assurer du bon import des icônes et composants.
+    - [x] Vérification de la syntaxe : S'assurer de la conformité du code TypeScript et JSX.
+    - [x] Test unitaire (jest DOM) : Écrire un test E2E Playwright spécifique pour la carte d4 (recul du détenteur de carreau) et s'assurer qu'il passe à 100%.
+
+## Phase 37 : Réforme des règles de sortie de la Cellule de Dégrisement
+* **Nouvelles règles de Cellule (Roller un 6, caution ou DÉPART)**
+    - [x] Implémentation :
+        1. Modifier nextTurn dans useGameState.ts pour ne pas libérer automatiquement le joueur en prison au tour suivant.
+        2. Implémenter tryJailRoll, resolveJailRollResult, et returnToStartFromJail dans useGameState.ts.
+        3. Mettre à jour l'affichage de la Cellule de Dégrisement dans App.tsx pour offrir le choix d'essayer d'avoir un 6 (jusqu'à 3 essais), de payer la caution, ou de retourner au DÉPART (après 3 échecs).
+    - [x] Documentation (JSDoc et commentaires) : Documenter les nouvelles fonctions de gestion de cellule dans useGameState.ts.
+    - [x] Vérification des imports : S'assurer du bon import des icônes et composants.
+    - [x] Vérification de la syntaxe : S'assurer de la conformité du code TypeScript et JSX.
+    - [x] Test unitaire (jest DOM) : Ajouter/adapter les tests Playwright pour couvrir les nouveaux scénarios de cellule de dégrisement.
+
+## Phase 38 : Résolution de la compilation et amélioration de la sortie de cellule
+* **Résolution de la compilation et amélioration de la sortie de cellule**
+    - [x] Implémentation :
+        1. Supprimer le retour de `payJailFineAndNextTurn` de `useGameState.ts` et sa destructuration dans `App.tsx`.
+        2. Remplacer `payJailFineAndNextTurn` par `payJailFine` sur le bouton de caution de la 3ème tentative dans `App.tsx`.
+        3. S'assurer qu'après avoir payé la caution (boire cul sec), le joueur est libéré et peut lancer le dé et avancer immédiatement.
+    - [x] Documentation (JSDoc et commentaires) : Ajouter des commentaires descriptifs de la libération et du relancer de dé.
+    - [x] Vérification des imports : Nettoyer les variables et fonctions obsolètes de `App.tsx` et `useGameState.ts`.
+    - [x] Vérification de la syntaxe : Lancer `npm run build` et corriger toutes les erreurs de type / compilation.
+    - [x] Test unitaire (jest DOM) : Exécuter tous les tests Playwright et vérifier qu'ils réussissent.
+## Phase 39 : Masquage du paiement de la caution avant la 3ème tentative
+* **Masquage du paiement de la caution avant la 3ème tentative**
+    - [x] Implémentation :
+        1. Retirer le bouton "Payer la caution" de l'écran initial de cellule (lorsque `rollResult === null`) dans `App.tsx` pour empêcher le joueur de payer volontairement avant 3 essais.
+        2. S'assurer que le choix de payer la caution n'apparaît qu'après 3 essais échoués.
+    - [x] Documentation (JSDoc et commentaires) : Mettre à jour les commentaires explicatifs dans `App.tsx`.
+    - [x] Vérification des imports : Vérifier l'absence de régression ou d'icône non utilisée.
+    - [x] Vérification de la syntaxe : Compiler avec `npm run build`.
+    - [x] Test unitaire (jest DOM) : Adapter et exécuter les tests Playwright pour vérifier la visibilité conditionnelle du bouton de caution.
+
+## Phase 40 : Résolution des incohérences de la base de cartes mystères et de l'UI
+* **Ajustement des Couleurs et Données de Cartes**
+    - [x] Implémentation
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
+* **Logique et État du Jeu Interactifs (useGameState.ts)**
+    - [x] Implémentation
+    - [x] Documentation (JSDoc et commentaires)
+    - [x] Vérification des imports
+    - [x] Vérification de la syntaxe
+    - [x] Test unitaire (jest DOM)
+
+* **Interface Utilisateur Dynamique et Interactive (CardDrawer.tsx & App.tsx) et Compilation**
+    - [x] Implémentation : Passer les props manquantes (players, activePlayerId) dans App.tsx, nettoyer les imports lucide-react inutilisés dans CardDrawer.tsx, assouplir la signature de addSips et réconcilier activeCard dans useGameState.ts.
+    - [x] Documentation (JSDoc et commentaires) : Ajouter les commentaires explicatifs JSDoc pour les signatures et props mis à jour.
+    - [x] Vérification des imports : S'assurer que lucide-react et les props sont propres et exempts d'import mort.
+    - [x] Vérification de la syntaxe : Lancer tsc pour s'assurer de l'absence d'erreur TypeScript.
+    - [x] Test unitaire (jest DOM) : Valider les tests Playwright existants ou les adapter si nécessaire.
 
 
+## Phase 41 : Cohérence des défis en duo (Bouteille) et correction du layout
+* **Modélisation des Défis Duo et Logique de Résolution**
+    - [x] Implémentation : Créer la constante DUO_CHALLENGES structurée dans src/gameData.ts avec type ('duel' | 'group') et penalty, adapter drawDuoChallengeWithoutRepetition et resolveBottle dans useGameState.ts, et ajouter activeDuoChallengeType et activeDuoChallengePenalty à l'état GameState.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les nouveaux types et propriétés dans types.ts et gameData.ts.
+    - [x] Vérification des imports : Pas d'import circulaire.
+    - [x] Vérification de la syntaxe : S'assurer du bon typage strict.
+    - [x] Test unitaire (jest DOM) : Ajouter/adapter les tests de structure des défis duo.
+
+* **Interface Utilisateur Dynamique et Interactive (App.tsx)**
+    - [x] Implémentation : Afficher conditionnellement les boutons de résolution dans App.tsx (Boutons individuels pour duel, ou boutons collectifs pour groupe) et ajuster le style du conteneur pour éviter tout défilement/scrollbar.
+    - [x] Documentation (JSDoc et commentaires) : Commenter les conditions de rendu.
+    - [x] Vérification des imports : Nettoyer les imports.
+    - [x] Vérification de la syntaxe : Lancer tsc pour valider la compilation.
+
+
+## Phase 42 : Réconciliation robuste des défis duo (Bouteille) sauvegardés dans localStorage
+* **Détection Dynamique et Fallbacks de Typage**
+    - [x] Implémentation : Créer getDuoChallengeDetails dans src/gameData.ts pour analyser le texte et déterminer le type/pénalité, l'intégrer dans getInitialState de useGameState.ts, et dans App.tsx comme fallback.
+    - [x] Documentation (JSDoc et commentaires) : Documenter la fonction getDuoChallengeDetails.
+    - [x] Vérification des imports : S'assurer du bon import de la fonction.
+    - [x] Vérification de la syntaxe : Lancer tsc pour s'assurer du typage.
+    - [x] Test unitaire (jest DOM) : Valider les tests Playwright.
+
+## Phase 43 : Correction du Scénario 16 (La Blague Carambar)
+* **Pénalités Interactives et Sélection Multiple**
+    - [x] Implémentation :
+        1. Ajouter les classes CSS `.success-btn` et `.fail-btn` dans `src/index.css` pour résoudre les boutons sans style de sélection.
+        2. Mettre à jour `resolveBarScenario` dans `src/hooks/useGameState.ts` pour ajouter l'action `'laugh_penalty'` permettant d'appliquer séparément les sentences "Cul Sec" (6 gorgées) ou "DÉPART" (position 0, isLockedAtStart = true) à n'importe quel joueur.
+        3. Dans `src/App.tsx`, ajouter la gestion de `barScenarioStage === 'resolve_penalties'` pour le Scénario 16. Proposer à l'utilisateur de choisir pour chaque joueur ayant ri (ou pour le joueur actif si personne n'a ri) entre "Boire Cul sec 🍺" et "Retourner au DÉPART ↩️".
+    - [x] Documentation (JSDoc et commentaires) : Ajouter JSDoc/Docstrings sur la nouvelle action et la résolution interactive par joueur.
+    - [x] Vérification des imports : S'assurer du bon import des composants et icônes.
+    - [x] Vérification de la syntaxe : S'assurer du typage TypeScript strict.
+    - [x] Test unitaire (jest DOM) : Mettre à jour les tests Playwright dans `tests/game.spec.ts` pour valider ce flux interactif.
+
+## Phase 44 : Commentaires de spécification de l'UI pour la carte s3
+* **Spécification des effets de la carte s3 (Valet de Pique ♠️)**
+    - [x] Implémentation : Ajouter un commentaire détaillé expliquant les cas et les boutons à afficher dans l'UI pour la carte `s3` dans `src/gameData.ts`.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les règles d'UI et de sentences.
+    - [x] Vérification des imports : Aucun import modifié.
+    - [x] Vérification de la syntaxe : S'assurer du bon format du fichier gameData.ts.
+    - [x] Test unitaire (jest DOM) : Aucun test requis pour les commentaires.
+
+## Phase 45 : Commentaires de spécification de l'UI pour les 22 scénarios de bar
+* **Spécification de l'UI pour BAR_SCENARIOS**
+    - [x] Implémentation : Ajouter les commentaires détaillant les cas et boutons d'UI correspondants pour chaque scénario dans `src/gameData.ts`.
+    - [x] Documentation (JSDoc et commentaires) : Documenter le comportement attendu des composants pour tous les scénarios de bar.
+    - [x] Vérification des imports : Pas de changement d'import.
+    - [x] Vérification de la syntaxe : S'assurer que le fichier gameData.ts compile correctement sans erreurs.
+    - [x] Test unitaire (jest DOM) : Aucun test requis pour les commentaires.
+
+## Phase 46 : Mise à jour des commentaires des boutons de scénarios dans gameData.ts
+* **Mise à jour des commentaires d'UI dans BAR_SCENARIOS**
+    - [x] Implémentation : Mettre à jour les commentaires des scénarios 13 à 22 dans `src/gameData.ts` pour correspondre précisément aux boutons réels de `App.tsx` (boutons de réussite de défi et de recul de cases).
+    - [x] Documentation (JSDoc et commentaires) : Corriger et documenter les commentaires d'UI pour une cohérence parfaite.
+    - [x] Vérification des imports : Aucun import modifié.
+    - [x] Vérification de la syntaxe : Lancer `npm run build` pour vérifier que tout compile.
+    - [x] Test unitaire (jest DOM) : Aucun test nécessaire.
+
+## Phase 47 : Ajout des commentaires spécifiant les boutons de l'UI pour CARDS_DATABASE et DUO_CHALLENGES dans gameData.ts
+* **Commentaires de spécification de l'UI pour CARDS_DATABASE**
+    - [x] Implémentation : Ajouter un commentaire détaillé en bas de chaque carte de la base de données de cartes `CARDS_DATABASE` dans `src/gameData.ts` décrivant les boutons d'UI correspondants.
+    - [x] Documentation (JSDoc et commentaires) : Expliquer clairement les boutons d'UI affichés par le jeu pour chaque carte.
+    - [x] Vérification des imports : Aucun import modifié.
+    - [x] Vérification de la syntaxe : S'assurer du bon formatage du fichier gameData.ts.
+    - [x] Test unitaire (jest DOM) : Relancer les tests existants pour s'assurer qu'aucun n'est rompu.
+
+* **Commentaires de spécification de l'UI pour DUO_CHALLENGES**
+    - [x] Implémentation : Ajouter un commentaire détaillé en bas de chaque défi duo de `DUO_CHALLENGES` dans `src/gameData.ts` décrivant les boutons d'UI correspondants.
+    - [x] Documentation (JSDoc et commentaires) : Expliquer clairement les boutons d'UI affichés pour chaque défi duo.
+    - [x] Vérification des imports : Aucun import modifié.
+    - [x] Vérification de la syntaxe : Lancer `npm run build` pour vérifier que le projet compile.
+    - [x] Test unitaire (jest DOM) : Exécuter `npm run test` pour s'assurer que tous les tests Playwright passent.
+
+## Phase 48 : Corrections des Incohérences des Boutons de l'UI
+* **Résolution des Erreurs de Compilation dans App.tsx**
+    - [/] Implémentation : Corriger les types dans setInteractiveChoices et supprimer getDuoChallengeConfig en double, renommer targetName inutilisé.
+    - [x] Implémentation : Corriger les types dans setInteractiveChoices et supprimer getDuoChallengeConfig en double, renommer targetName inutilisé.
+    - [x] Documentation (JSDoc et commentaires) : Ajouter des commentaires descriptifs sur le typage explicite de copy dans setInteractiveChoices.
+    - [x] Vérification des imports : Pas d'import mort.
+    - [x] Vérification de la syntaxe : S'assurer du bon typage strict et faire tourner npm run build.
+* **Vérification et Corrections des Cartes (Cards) dans CardDrawer.tsx**
+    - [x] Implémentation : Ajouter les commentaires `// [CORRIGÉ]` sur les IDs des cartes et vérifier l'affichage des boutons selon les spécifications.
+    - [x] Documentation : JSDoc pour les nouvelles signatures et méthodes.
+    - [x] Vérification de la syntaxe : Compilation TypeScript et rendu OK.
+* **Vérification et Corrections des Scénarios de Bar (Bar) dans App.tsx**
+    - [x] Implémentation : Ajouter les commentaires `// [CORRIGÉ]` sur les IDs de bars et vérifier les boutons de scénarios interactifs selon les spécifications.
+    - [x] Documentation : Commentaires de code et explications.
+    - [x] Vérification de la syntaxe : Compilation TypeScript OK.
+* **Vérification et Corrections des Défis Duo (Duo) dans App.tsx**
+    - [x] Implémentation : Ajouter les commentaires `// [CORRIGÉ]` sur les IDs de duo et vérifier l'affichage des boutons selon les spécifications.
+    - [x] Documentation : Commentaires de code et explications.
+    - [x] Vérification de la syntaxe : Compilation TypeScript OK.
+* **Tests et Validation Playwright**
+    - [x] Implémentation : Lancer et exécuter toute la suite de tests Playwright.
+    - [x] Documentation : Mettre à jour si nécessaire les assertions de tests.
+    - [x] Test unitaire (jest/Playwright E2E) : S'assurer que npx playwright test passe avec succès.
+
+## Phase 49 : Correction des Scénarios de Cartes et Validation E2E
+* **Correction des Scénarios de Cartes et Validation E2E**
+    - [x] Implémentation : Résoudre le bug de traitement de payload pour les cartes de mouvement et d'écrasement de position dans `useGameState.ts`.
+    - [x] Implémentation : Mettre à jour la détection du fétiche Carreau pour `d4` dans `CardDrawer.tsx`.
+    - [x] Implémentation : Mettre à jour les choix pré-remplis de duo, les classes CSS des boutons, et corriger les scénarios 4, 16 et 21 dans `App.tsx`.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les corrections apportées.
+    - [x] Vérification des imports : Pas d'import mort.
+    - [x] Vérification de la syntaxe : Compilation TypeScript OK.
+    - [x] Test unitaire (Playwright E2E) : S'assurer que tous les tests passent à 100%.
+
+
+
+## Phase 50 : Correction des Affichages Tronqués et Remplacement des Pseudos
+
+* **[Correction des Styles CSS de la Zone Centrale]**
+    - [x] Implémentation : Retirer `!important` des polices de `.neon-btn` (ligne 128, 134) et de `.center-action-card h3`, `.center-action-card p`, `.center-action-card div`. Utiliser le sélecteur d'enfant direct `>` pour `.center-action-card > button` et `.center-action-card > .neon-btn` afin d'éviter d'appliquer les dimensions globales de bouton aux listes de choix imbriquées.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les corrections de style et l'usage de sélecteurs d'enfants directs dans `src/index.css`.
+    - [x] Vérification des imports : Aucun import mort introduit.
+    - [x] Vérification de la syntaxe : S'assurer que le fichier CSS compile et est valide.
+    - [x] Test unitaire (jest DOM) : Relancer les tests Playwright pour valider que le design reste intègre.
+
+* **[Correction du Remplacement de {p1} et {p2} dans les Défis Duo]**
+    - [x] Implémentation : Remplacer l'usage de `.replace` par des expressions régulières globales `/{p1}/g` et `/{p2}/g` dans `src/hooks/useGameState.ts`, `src/App.tsx`, et `src/gameData.ts` pour garantir que toutes les occurrences des placeholders `{p1}` et `{p2}` sont remplacées par les vrais pseudos des joueurs.
+    - [x] Documentation (JSDoc et commentaires) : Ajouter des commentaires explicatifs de ce choix de remplacement global.
+    - [x] Vérification des imports : Valider les imports TypeScript.
+    - [x] Vérification de la syntaxe : Lancer `npm run build` pour garantir qu'aucune erreur TypeScript n'est introduite.
+    - [x] Test unitaire (jest DOM) : Valider que les 24 tests Playwright passent avec succès.
+
+* **[Correction des Styles CSS du Tiroir de Cartes (CardDrawer)]**
+    - [x] Implémentation : Remplacer le sélecteur global de boutons `.card-actions button` par `.card-actions > button, .card-actions > div > button` pour éviter d'appliquer les dimensions des boutons principaux de carte aux listes de choix de joueurs imbriquées.
+    - [x] Documentation (JSDoc et commentaires) : Expliquer l'ajustement du sélecteur CSS dans `src/index.css`.
+    - [x] Vérification des imports : S'assurer qu'aucun style ou import tiers n'est cassé.
+    - [x] Vérification de la syntaxe : Lancer la compilation via `npm run build`.
+    - [x] Test unitaire (jest DOM) : Exécuter les tests Playwright pour vérifier l'absence de régression.
+
+* **[Correction du Rendu Interactif du Scénario 6 (Le Coude Improbable)]**
+    - [x] Implémentation : Modifier `src/App.tsx` pour le Scénario 6 afin que le bouton "Personne n'a réussi" n'applique pas automatiquement les gorgées mais bascule vers un écran de choix pour l'ensemble des joueurs (dont le joueur actif). Permettre à l'utilisateur de choisir entre "Cul Sec 🍺" et "DÉPART 🏁" pour chaque joueur avant de valider. (Déjà présent dans App.tsx)
+    - [x] Implémentation : Mettre à jour `tests/game.spec.ts` pour injecter un mock déterministe de Math.random et s'assurer que le test de cycle de jeu clique sur le bouton "Valider" si un scénario de bar interactif s'ouvre, évitant ainsi les échecs de test intermittents.
+    - [x] Documentation (JSDoc et commentaires) : Commenter le flux de choix interactif pour le scénario 6 et le mécanisme de robustesse dans le fichier de test.
+    - [x] Vérification des imports : S'assurer que les variables et fonctions requises sont importées.
+    - [x] Vérification de la syntaxe : Lancer la compilation via `npm run build`.
+    - [x] Test unitaire (jest DOM) : Relancer Playwright pour valider le bon fonctionnement de tous les tests.
+
+* **[Affichage des Cartes Fétiches dans les Listes de Choix et Dropdowns]**
+    - [x] Implémentation : Dans `CardDrawer.tsx` et `App.tsx`, ajouter l'affichage de la carte fétiche (valeur et enseigne) à côté du nom de chaque joueur dans les listes de choix interactifs et les dropdowns de sélection. (Déjà présent)
+    - [x] Documentation (JSDoc et commentaires) : Commenter les modifications de rendu des noms de joueurs avec leur carte.
+    - [x] Vérification des imports : Valider les imports des symboles ou fonctions requis.
+    - [x] Vérification de la syntaxe : Lancer la compilation via `npm run build`.
+    - [x] Test unitaire (jest DOM) : Relancer Playwright pour valider qu'aucun test n'est brisé.

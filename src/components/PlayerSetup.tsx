@@ -49,6 +49,7 @@ export const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
       prisonTurns: 0,
       laps: 0,
       powerUsed: false,
+      isLockedAtStart: true,
     };
     setPlayers([...players, newPlayer]);
     setName('');

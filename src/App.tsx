@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameState } from './hooks/useGameState';
 import { PlayerSetup } from './components/PlayerSetup';
 import { Board } from './components/Board';
@@ -8,7 +8,8 @@ import { playClick, playFail, playSuccess } from './utils/audio';
 import { BottleSpinner } from './components/BottleSpinner';
 import { RevealCards } from './components/RevealCards';
 import { Shield, AlertTriangle, Users, GlassWater, Flame, Menu, X, Beer, Crown, Trophy, PartyPopper } from 'lucide-react';
-import { BAR_SCENARIOS } from './gameData';
+import { BAR_SCENARIOS, DUO_CHALLENGES } from './gameData';
+import type { Player } from './types';
 
 /**
  * Main App Component.
@@ -16,6 +17,7 @@ import { BAR_SCENARIOS } from './gameData';
  */
 function App() {
   const [showDashboard, setShowDashboard] = useState(false);
+  const [interactiveChoices, setInteractiveChoices] = useState<Record<string, any>>({});
   const {
     state,
     startGame,
@@ -26,6 +28,9 @@ function App() {
     resolveBar,
     resolveBarScenario,
     payJailFine,
+    tryJailRoll,
+    resolveJailRollResult,
+    returnToStartFromJail,
     nextTurn,
     sendToJail,
     usePlayerPower,
@@ -53,6 +58,41 @@ function App() {
     barScenarioStage,
     pendingTransfer,
   } = state;
+
+  useEffect(() => {
+    if (state.activeScreen === 'minigame' && state.activeDuoChallenge) {
+      const initial: Record<string, string> = {};
+      const activePlayer = state.players[state.currentPlayerIndex];
+      if (activePlayer && state.selectedBottleTargetId) {
+        initial[activePlayer.id] = 'gagne';
+        initial[state.selectedBottleTargetId] = 'gagne';
+      }
+      setInteractiveChoices(initial);
+    } else if (state.activeBarScenario !== undefined) {
+      const initial: Record<string, string> = {};
+      if (state.activeBarScenario === 3) {
+        state.players.forEach(pl => { initial[pl.id] = 'montre'; });
+      } else if (state.activeBarScenario === 22) {
+        state.players.forEach(pl => { initial[pl.id] = 'success'; });
+      } else if (state.activeBarScenario === 7) {
+        const p1Id = state.barScenarioTargetIds?.[0];
+        const p2Id = state.barScenarioTargetIds?.[1];
+        if (p1Id) initial[p1Id] = 'bisou';
+        if (p2Id) initial[p2Id] = 'bisou';
+      } else if (state.activeBarScenario === 5) {
+        const winner = state.players[state.currentPlayerIndex];
+        if (winner) {
+          initial['winnerId'] = winner.id;
+          state.players.forEach(pl => {
+            if (pl.id !== winner.id) initial[pl.id] = 'sip';
+          });
+        }
+      }
+      setInteractiveChoices(initial);
+    } else {
+      setInteractiveChoices({});
+    }
+  }, [state.activeScreen, state.activeBarScenario, state.activeDuoChallenge, state.activeCard?.id, state.selectedBottleTargetId, state.currentPlayerIndex, state.players, state.barScenarioTargetIds]);
 
   const getSuitSymbol = (suit: string) => {
     if (suit === 'pique') return '♠️';
@@ -82,7 +122,7 @@ function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
             {otherPlayers.map((op) => (
               <button key={op.id} onClick={() => usePlayerPower('coeur', op.id, penaltyAmount)} className="neon-btn" style={{ borderColor: op.color, color: op.color }}>
-                {op.name}
+                {op.name} {op.card ? `(${getSuitSymbol(op.card.suit)})` : ''}
               </button>
             ))}
           </div>
@@ -152,6 +192,165 @@ function App() {
   }
 
 
+  const getDuoChallengeConfig = (idNum: number) => {
+    if ([4, 6, 12, 16, 21].includes(idNum)) return { sips: 2, recul: 2 };
+    if ([7, 9, 10, 11, 17, 19, 20, 23, 24].includes(idNum)) return { sips: 2, recul: 3 };
+    if ([5, 13, 14].includes(idNum)) return { sips: 2, recul: 4 };
+    if ([2, 8, 18, 22, 25].includes(idNum)) return { sips: 3, recul: 4 };
+    return { sips: 2, recul: 3 };
+  };
+
+  const renderDuoChallengeBody = (challengeId: number, targetPlayer: Player | undefined, _targetName: string) => {
+    if (!targetPlayer) return null;
+
+    if (challengeId === 15) {
+      return (
+        <button onClick={() => { playSuccess(); resolveDuoPenalty('none', 0); }} className="neon-btn success-btn" style={{ width: '100%', marginTop: '10px' }}>
+          Valider
+        </button>
+      );
+    }
+
+    if (challengeId === 3) {
+      const allFilled = players.every(pl => interactiveChoices[pl.id] !== undefined);
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '8px' }}>
+            {players.map((pl) => {
+              const choice = interactiveChoices[pl.id];
+              return (
+                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                  <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                    {pl.name}
+                    {pl.card && (
+                      <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                        {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
+                      </span>
+                    )}
+                  </span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'rigole' })); }}
+                      className={`neon-btn ${choice === 'rigole' ? 'choice-fail-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                    >
+                      Rigole (6G)
+                    </button>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'non_rigole' })); }}
+                      className={`neon-btn ${choice === 'non_rigole' ? 'choice-success-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                    >
+                      Ne rigole pas
+                    </button>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'depart' })); }}
+                      className={`neon-btn ${choice === 'depart' ? 'choice-fail-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                    >
+                      DÉPART 🏁
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            disabled={!allFilled}
+            onClick={() => {
+              const sips: Record<string, number> = {};
+              const movements: Record<string, any> = {};
+              players.forEach((pl) => {
+                const choice = interactiveChoices[pl.id];
+                if (choice === 'rigole') {
+                  sips[pl.id] = 6;
+                } else if (choice === 'depart') {
+                  movements[pl.id] = { position: 0 };
+                }
+              });
+              resolveDuoPenalty('none', 0, { sips, movements });
+            }}
+            className="neon-btn success-btn"
+            style={{ width: '100%' }}
+          >
+            Valider le Défi
+          </button>
+        </div>
+      );
+    }
+    const config = getDuoChallengeConfig(challengeId);
+    const duoPlayers = [currentPlayer, targetPlayer].filter(Boolean) as Player[];
+    const allFilled = duoPlayers.every(pl => interactiveChoices[pl.id] !== undefined);
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginBottom: '8px' }}>
+          {duoPlayers.map((pl) => {
+            const choice = interactiveChoices[pl.id];
+            return (
+              <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                  {pl.name}
+                  {pl.card && (
+                    <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                      {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
+                    </span>
+                  )}
+                </span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'gagne' })); }}
+                    className={`neon-btn ${choice === 'gagne' ? 'choice-success-active' : ''}`}
+                    style={{ padding: '4px 6px', fontSize: '10px' }}
+                  >
+                    🏆 Gagné
+                  </button>
+                  <button
+                    onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
+                    className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
+                    style={{ padding: '4px 6px', fontSize: '10px' }}
+                  >
+                    Boire {config.sips}G 🍺
+                  </button>
+                  <button
+                    onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
+                    className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
+                    style={{ padding: '4px 6px', fontSize: '10px' }}
+                  >
+                    Reculer {config.recul}C ⬅️
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          disabled={!allFilled}
+          onClick={() => {
+            const sips: Record<string, number> = {};
+            const movements: Record<string, any> = {};
+            duoPlayers.forEach((pl) => {
+              const choice = interactiveChoices[pl.id];
+              if (choice === 'sip') {
+                sips[pl.id] = config.sips;
+              } else if (choice === 'recul') {
+                movements[pl.id] = { recul: config.recul };
+              }
+            });
+            resolveDuoPenalty('none', 0, { sips, movements });
+          }}
+          className="neon-btn success-btn"
+          style={{ width: '100%' }}
+        >
+          Valider le Défi
+        </button>
+      </div>
+    );
+  };
+
+
   /**
    * Renders UI for random interactive bar scenarios (Part 1: Scenarios 1-4).
    */
@@ -198,15 +397,82 @@ function App() {
     }
 
     if (scenarioNum === 3) {
+      const allFilled = players.every((pl) => interactiveChoices[pl.id] !== undefined);
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <Flame size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
-          <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn">🩲 Montré (Acheter)</button>
-            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn">🍺 Boire {landedTile.price || 3}G</button>
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '12px' }}>{scenario.description}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '8px' }}>
+            {players.map((pl) => {
+              const choice = interactiveChoices[pl.id];
+              return (
+                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                  <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                    {pl.name}
+                    {pl.card && (
+                      <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                        {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
+                      </span>
+                    )}
+                  </span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'montre' })); }}
+                      className={`neon-btn ${choice === 'montre' ? 'choice-success-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                    >
+                      🩲 Montré
+                    </button>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
+                      className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                    >
+                      Boire 3G 🍺
+                    </button>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
+                      className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                    >
+                      DÉPART 🏁
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+          <button
+            disabled={!allFilled}
+            onClick={() => {
+              const sips: Record<string, number> = {};
+              const movements: Record<string, any> = {};
+              let allMontre = true;
+              players.forEach((pl) => {
+                const choice = interactiveChoices[pl.id];
+                if (choice === 'sip') {
+                  sips[pl.id] = 3;
+                  allMontre = false;
+                } else if (choice === 'recul') {
+                  movements[pl.id] = { position: 0 };
+                  allMontre = false;
+                }
+              });
+              resolveBarScenario('resolve_custom', {
+                buy: allMontre,
+                sips,
+                movements,
+                log: allMontre
+                  ? `🏢 ${currentPlayer.name} achète ${landedTile.name} car tout le monde a montré son slip !`
+                  : `🩲 Défi slip : pénalités appliquées pour ceux qui ont refusé !`
+              });
+            }}
+            className="neon-btn success-btn"
+            style={{ width: '100%' }}
+          >
+            Valider le Défi
+          </button>
         </div>
       );
     }
@@ -219,94 +485,519 @@ function App() {
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <Users size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '13px' }}>
             {scenario.description.replace("Un joueur aléatoire indiqué par l'application", targetName)}
           </p>
-          <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn">🍺 {targetName} boit 4G (Acheter)</button>
-            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn">❌ Refuser (Boire)</button>
+          <div className="center-actions-stack" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+            <button
+              onClick={() => {
+                if (targetId) {
+                  playSuccess();
+                  resolveBarScenario('resolve_custom', {
+                    buy: true,
+                    sips: { [targetId]: 4 },
+                    log: `🎯 ${targetName} a bu 4 gorgées ! ${currentPlayer.name} achète ${landedTile.name} !`
+                  });
+                }
+              }}
+              className="neon-btn success-btn"
+              style={{ width: '100%', borderColor: targetPlayer?.color, color: targetPlayer?.color }}
+            >
+              🍺 {targetName} boit 4G (Acheter)
+            </button>
+            <button
+              onClick={() => {
+                if (targetId) {
+                  playFail();
+                  resolveBarScenario('resolve_custom', {
+                    buy: false,
+                    movements: { [targetId]: { recul: 3 } },
+                    log: `❌ ${targetName} a refusé et recule de 3 cases ! ${currentPlayer.name} n'achète pas ${landedTile.name}.`
+                  });
+                }
+              }}
+              className="neon-btn fail-btn"
+              style={{ width: '100%' }}
+            >
+              ↩️ {targetName} recule de 3 cases (Refuser)
+            </button>
           </div>
         </div>
       );
     }
 
     if (scenarioNum === 5) {
+      const winnerId = interactiveChoices['winnerId'];
+      const otherPlayers = players.filter(pl => pl.id !== winnerId);
+      const allFilled = winnerId !== undefined && otherPlayers.every(pl => interactiveChoices[pl.id] !== undefined);
+
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <Crown size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
-          <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn">✌️ Défi Fait (Acheter)</button>
-            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn">🍺 Boire {landedTile.price || 3}G</button>
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '12px' }}>{scenario.description}</p>
+          
+          <div style={{ marginBottom: '8px', width: '100%' }}>
+            <span style={{ fontSize: '11px', opacity: 0.8 }}>Sélectionnez le Gagnant :</span>
+            <select
+              value={winnerId || ''}
+              onChange={(e) => {
+                playClick();
+                const newWinner = e.target.value;
+                setInteractiveChoices(prev => {
+                  const copy: Record<string, any> = { ...prev, winnerId: newWinner };
+                  players.forEach(pl => {
+                    if (pl.id !== newWinner) copy[pl.id] = 'sip';
+                    else delete copy[pl.id];
+                  });
+                  return copy;
+                });
+              }}
+              className="setup-select"
+              style={{ width: '100%', padding: '6px', fontSize: '12px', background: '#050515', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', marginTop: '4px' }}
+            >
+              <option value="">-- Choisir le gagnant --</option>
+              {players.map(pl => (
+                <option key={pl.id} value={pl.id}>
+                  {pl.name} {pl.card ? `[${pl.card.cardValue} ${getSuitSymbol(pl.card.suit)}]` : ''}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {winnerId && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxHeight: '140px', overflowY: 'auto', paddingRight: '4px', marginBottom: '8px' }}>
+              {otherPlayers.map((pl) => {
+                const choice = interactiveChoices[pl.id];
+                return (
+                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                    <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                      {pl.name}
+                      {pl.card && (
+                        <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                          {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
+                        </span>
+                      )}
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
+                        className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
+                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                      >
+                        Boire 2G 🍺
+                      </button>
+                      <button
+                        onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
+                        className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
+                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                      >
+                        Reculer 2C ⬅️
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            disabled={!allFilled}
+            onClick={() => {
+              const sips: Record<string, number> = {};
+              const movements: Record<string, any> = {};
+              otherPlayers.forEach((pl) => {
+                const choice = interactiveChoices[pl.id];
+                if (choice === 'sip') {
+                  sips[pl.id] = 2;
+                } else if (choice === 'recul') {
+                  movements[pl.id] = { recul: 2 };
+                }
+              });
+              const winnerName = players.find(p => p.id === winnerId)?.name || '';
+              resolveBarScenario('resolve_custom', {
+                buy: true,
+                sips,
+                movements,
+                log: `🏢 ${currentPlayer.name} achète ${landedTile.name} ! ${winnerName} a gagné, les autres reçoivent leurs pénalités !`
+              });
+            }}
+            className="neon-btn success-btn"
+            style={{ width: '100%' }}
+          >
+            Valider le Défi
+          </button>
         </div>
       );
     }
 
     if (scenarioNum === 6) {
+      const showChoices = interactiveChoices['success'] !== undefined;
+      const isSuccess = interactiveChoices['success'] === true;
+      const otherPlayers = players.filter(pl => pl.id !== currentPlayer.id);
+      const targetPlayers = isSuccess ? otherPlayers : players;
+      const allFilled = targetPlayers.every(pl => interactiveChoices[pl.id] !== undefined);
+
+      if (showChoices) {
+        return (
+          <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+            <GlassWater size={20} style={{ color: landedTile.color }} />
+            <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
+            <p style={{ marginBottom: '8px', fontSize: '11px', lineHeight: '1.2' }}>
+              {isSuccess ? "Choisissez la sentence pour chaque perdant :" : "Choisissez la sentence pour tout le monde (Échec) :"}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxHeight: '150px', overflowY: 'auto', paddingRight: '4px', marginBottom: '8px' }}>
+              {targetPlayers.map((pl) => {
+                const choice = interactiveChoices[pl.id];
+                return (
+                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                    <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                      {pl.name}
+                      {pl.card && (
+                        <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                          {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
+                        </span>
+                      )}
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sec' })); }}
+                        className={`neon-btn ${choice === 'sec' ? 'choice-fail-active' : ''}`}
+                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                      >
+                        Cul Sec 🍺
+                      </button>
+                      <button
+                        onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'depart' })); }}
+                        className={`neon-btn ${choice === 'depart' ? 'choice-fail-active' : ''}`}
+                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                      >
+                        DÉPART 🏁
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              disabled={!allFilled}
+              onClick={() => {
+                const sips: Record<string, number> = {};
+                const movements: Record<string, any> = {};
+                targetPlayers.forEach((pl) => {
+                  const choice = interactiveChoices[pl.id];
+                  if (choice === 'sec') {
+                    sips[pl.id] = 6;
+                  } else if (choice === 'depart') {
+                    movements[pl.id] = { position: 0 };
+                  }
+                });
+                resolveBarScenario('resolve_custom', {
+                  buy: true,
+                  sips,
+                  movements,
+                  log: isSuccess
+                    ? `🏢 ${currentPlayer.name} achète ${landedTile.name} ! Les perdants prennent leurs sentences.`
+                    : `🏢 ${currentPlayer.name} achète ${landedTile.name} ! Tout le monde a échoué et prend sa sentence.`
+                });
+              }}
+              className="neon-btn success-btn"
+              style={{ width: '100%' }}
+            >
+              Valider les sentences
+            </button>
+          </div>
+        );
+      }
+
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <GlassWater size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
           <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
           <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('cul_sec_others'); }} className="neon-btn success-btn">👅 Quelqu'un a réussi !</button>
-            <button onClick={() => { playFail(); resolveBarScenario('cul_sec_all'); }} className="neon-btn fail-btn">❌ Personne n'a réussi</button>
+            <button
+              onClick={() => {
+                playClick();
+                setInteractiveChoices(prev => {
+                  const copy: Record<string, any> = { ...prev, success: true };
+                  otherPlayers.forEach(pl => { copy[pl.id] = 'sec'; });
+                  return copy;
+                });
+              }}
+              className="neon-btn success-btn"
+            >
+              👅 Réussi (Acheter)
+            </button>
+            <button
+              onClick={() => {
+                playClick();
+                setInteractiveChoices(prev => {
+                  const copy: Record<string, any> = { ...prev, success: false };
+                  players.forEach(pl => { copy[pl.id] = 'sec'; });
+                  return copy;
+                });
+              }}
+              className="neon-btn fail-btn"
+            >
+              ❌ Personne n'a réussi
+            </button>
           </div>
         </div>
       );
     }
 
     if (scenarioNum === 7) {
-      const p1 = players.find((p) => p.id === barScenarioTargetIds?.[0])?.name || "Joueur 1";
-      const p2 = players.find((p) => p.id === barScenarioTargetIds?.[1])?.name || "Joueur 2";
+      const p1Id = barScenarioTargetIds?.[0];
+      const p2Id = barScenarioTargetIds?.[1];
+      const p1 = players.find((p) => p.id === p1Id);
+      const p2 = players.find((p) => p.id === p2Id);
+      if (!p1 || !p2) return null;
+
+      const choice1 = interactiveChoices[p1.id];
+      const choice2 = interactiveChoices[p2.id];
+      const allFilled = choice1 !== undefined && choice2 !== undefined;
+
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <PartyPopper size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>
-            <strong>{p1}</strong> et <strong>{p2}</strong> se font des bisous sur le front !
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '13px' }}>
+            <strong>{p1.name}</strong> et <strong>{p2.name}</strong> se font des bisous sur le front !
           </p>
-          <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn">😘 Fait (Acheter)</button>
-            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn">🍺 Refuser & Boire</button>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginBottom: '8px' }}>
+            {/* Player 1 Choice */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+              <span style={{ color: p1.color, fontSize: '12px', fontWeight: 600 }}>{p1.name}</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [p1.id]: 'bisou' })); }}
+                  className={`neon-btn ${choice1 === 'bisou' ? 'success-btn' : ''}`}
+                  style={{ padding: '4px 6px', fontSize: '10px' }}
+                >
+                  😘 Bisou
+                </button>
+                <button
+                  onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [p1.id]: 'recul' })); }}
+                  className={`neon-btn ${choice1 === 'recul' ? 'fail-btn' : ''}`}
+                  style={{ padding: '4px 6px', fontSize: '10px' }}
+                >
+                  Reculer 2C ⬅️
+                </button>
+              </div>
+            </div>
+            {/* Player 2 Choice */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+              <span style={{ color: p2.color, fontSize: '12px', fontWeight: 600 }}>{p2.name}</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [p2.id]: 'bisou' })); }}
+                  className={`neon-btn ${choice2 === 'bisou' ? 'success-btn' : ''}`}
+                  style={{ padding: '4px 6px', fontSize: '10px' }}
+                >
+                  😘 Bisou
+                </button>
+                <button
+                  onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [p2.id]: 'recul' })); }}
+                  className={`neon-btn ${choice2 === 'recul' ? 'fail-btn' : ''}`}
+                  style={{ padding: '4px 6px', fontSize: '10px' }}
+                >
+                  Reculer 2C ⬅️
+                </button>
+              </div>
+            </div>
           </div>
+
+          <button
+            disabled={!allFilled}
+            onClick={() => {
+              const movements: Record<string, any> = {};
+              let success = true;
+              if (choice1 === 'recul') {
+                movements[p1.id] = { recul: 2 };
+                success = false;
+              }
+              if (choice2 === 'recul') {
+                movements[p2.id] = { recul: 2 };
+                success = false;
+              }
+              resolveBarScenario('resolve_custom', {
+                buy: success,
+                movements,
+                log: success
+                  ? `🏢 ${currentPlayer.name} achète ${landedTile.name} car le défi bisou a été relevé !`
+                  : `😘 Défi bisou : certains ont refusé et reculent de 2 cases ! ${currentPlayer.name} n'achète pas le bar.`
+              });
+            }}
+            className="neon-btn success-btn"
+            style={{ width: '100%' }}
+          >
+            Valider le Défi
+          </button>
         </div>
       );
     }
 
-    if (scenarioNum === 8) {
-      // Scenario 8 requires checking who laughed. We can display simple selection or just buttons.
-      // Let's list checkboxes/buttons for players who laughed to penalize them!
+    if (scenarioNum === 8 || scenarioNum === 16) {
+      const laughIds = barScenarioTargetIds || [];
+      const isResolveStage = interactiveChoices['stage'] === 'resolve';
+      const otherPlayers = players.filter(pl => pl.id !== currentPlayer.id);
+
+      if (isResolveStage && (laughIds.length > 0 || scenarioNum === 16)) {
+        const rieurs = laughIds.length > 0 ? players.filter(pl => laughIds.includes(pl.id)) : [currentPlayer];
+        const allFilled = rieurs.every(pl => interactiveChoices[pl.id] !== undefined);
+
+        return (
+          <div className="center-action-card border-neon-red">
+            <AlertTriangle size={20} className="pulse" color="#ff3333" />
+            <h3 style={{ margin: '2px 0' }} className="text-neon-red">{scenario.title}</h3>
+            <p style={{ marginBottom: '8px', fontSize: '11px', lineHeight: '1.2' }}>Choisissez la sentence pour chaque rieur :</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxHeight: '150px', overflowY: 'auto', paddingRight: '4px', marginBottom: '8px' }}>
+              {rieurs.map((pl) => {
+                const choice = interactiveChoices[pl.id];
+                return (
+                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                    <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                      {pl.name}
+                      {pl.card && (
+                        <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                          {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
+                        </span>
+                      )}
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {scenarioNum === 16 ? (
+                        <>
+                          <button
+                            onClick={() => { playClick(); resolveBarScenario('laugh_penalty', { playerId: pl.id, penaltyType: 'cul_sec' }); }}
+                            className="neon-btn fail-btn"
+                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                          >
+                            Boire Cul sec 🍺
+                          </button>
+                          <button
+                            onClick={() => { playClick(); resolveBarScenario('laugh_penalty', { playerId: pl.id, penaltyType: 'depart' }); }}
+                            className="neon-btn fail-btn"
+                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                          >
+                            Retourner au DÉPART
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sec' })); }}
+                            className={`neon-btn ${choice === 'sec' ? 'choice-fail-active' : ''}`}
+                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                          >
+                            Cul Sec 🍺
+                          </button>
+                          <button
+                            onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
+                            className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
+                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                          >
+                            Reculer 4C ⬅️
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {scenarioNum !== 16 && (
+              <button
+                disabled={!allFilled}
+                onClick={() => {
+                  const sips: Record<string, number> = {};
+                  const movements: Record<string, any> = {};
+                  rieurs.forEach((pl) => {
+                    const choice = interactiveChoices[pl.id];
+                    if (choice === 'sec') {
+                      sips[pl.id] = 6;
+                    } else if (choice === 'recul') {
+                      movements[pl.id] = { recul: 4 };
+                    }
+                  });
+                  resolveBarScenario('resolve_custom', {
+                    buy: laughIds.length > 0,
+                    sips,
+                    movements,
+                    log: `🏢 ${currentPlayer.name} achète ${landedTile.name} ! Les rieurs prennent leurs sentences.`
+                  });
+                }}
+                className="neon-btn success-btn"
+                style={{ width: '100%' }}
+              >
+                Valider les sentences
+              </button>
+            )}
+          </div>
+        );
+      }
+
       return (
         <div className="center-action-card border-neon-red">
           <AlertTriangle size={20} className="pulse" color="#ff3333" />
           <h3 style={{ margin: '2px 0' }} className="text-neon-red">{scenario.title}</h3>
-          <p style={{ marginBottom: '6px', lineHeight: '1.2' }}>{scenario.description}</p>
-          <div style={{ opacity: 0.8, marginBottom: '6px' }}>Qui a ri ? (Sélection multiple) :</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '6px' }}>
-            {players.map((p) => {
-              const isSelected = barScenarioTargetIds?.includes(p.id);
+          <p style={{ marginBottom: '6px', lineHeight: '1.2', fontSize: '12px' }}>{scenario.description}</p>
+          <div style={{ opacity: 0.8, marginBottom: '6px', fontSize: '11px' }}>Qui a ri ? (Sélection multiple) :</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginBottom: '8px', maxHeight: '140px', overflowY: 'auto' }}>
+            {otherPlayers.map((p) => {
+              const isSelected = laughIds.includes(p.id);
               return (
                 <button
                   key={p.id}
                   onClick={() => {
-                    const current = barScenarioTargetIds || [];
-                    const next = current.includes(p.id) ? current.filter((id) => id !== p.id) : [...current, p.id];
+                    const next = isSelected ? laughIds.filter((id) => id !== p.id) : [...laughIds, p.id];
                     playClick();
                     resolveBarScenario('set_targets', { targets: next });
                   }}
-                  className={`neon-btn ${isSelected ? 'fail-btn' : ''}`}
+                  className={`neon-btn ${isSelected ? 'choice-fail-active' : ''}`}
+                  style={{ padding: '8px 10px', fontSize: '12px', borderColor: p.color, color: isSelected ? '#fff' : p.color }}
                 >
-                  😂 {p.name}
+                  😂 {p.name} {p.card ? `(${getSuitSymbol(p.card.suit)})` : ''}
                 </button>
               );
             })}
           </div>
-          <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('laugh', { laughIds: barScenarioTargetIds || [] }); }} className="neon-btn success-btn">✔️ Appliquer (Acheter)</button>
-            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn">❌ Annuler</button>
+          <div className="center-actions-stack" style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+            {(laughIds.length > 0 || scenarioNum === 16) ? (
+              <button
+                onClick={() => {
+                  playClick();
+                  setInteractiveChoices(prev => {
+                    const copy: Record<string, any> = { ...prev, stage: 'resolve' };
+                    if (scenarioNum === 16 && laughIds.length === 0) {
+                      copy[currentPlayer.id] = 'recul';
+                    } else {
+                      laughIds.forEach(id => { copy[id] = 'sec'; });
+                    }
+                    return copy;
+                  });
+                }}
+                className="neon-btn success-btn"
+                style={{ width: '100%' }}
+              >
+                {scenarioNum === 16 ? "Valider l'effet" : "⚖️ Définir les sentences"}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  playSuccess();
+                  resolveBarScenario('resolve_custom', {
+                    buy: true,
+                    log: `🏢 ${currentPlayer.name} achète ${landedTile.name} car personne n'a ri !`
+                  });
+                }}
+                className="neon-btn success-btn"
+                style={{ width: '100%' }}
+              >
+                ✔️ Acheter (Personne n'a ri)
+              </button>
+            )}
           </div>
         </div>
       );
@@ -317,9 +1008,27 @@ function App() {
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <Shield size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '13px' }}>{scenario.description}</p>
           <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('recule3'); }} className="neon-btn success-btn">⬅️ Reculer tout le monde (Acheter)</button>
+            <button
+              onClick={() => {
+                playSuccess();
+                const movements: Record<string, any> = {};
+                players.forEach((pl) => {
+                  if (pl.id !== currentPlayer.id && !pl.isPrisoner) {
+                    movements[pl.id] = { recul: 3 };
+                  }
+                });
+                resolveBarScenario('resolve_custom', {
+                  buy: true,
+                  movements,
+                  log: `🏢 ${currentPlayer.name} achète ${landedTile.name} ! Tous les autres reculent de 3 cases ⬅️ !`
+                });
+              }}
+              className="neon-btn success-btn"
+            >
+              ⬅️ Reculer tout le monde (Acheter)
+            </button>
             <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn">❌ Annuler</button>
           </div>
         </div>
@@ -327,14 +1036,81 @@ function App() {
     }
 
     if (scenarioNum === 10) {
+      const talkerId = interactiveChoices['talkerId'];
+      const talker = players.find(p => p.id === talkerId);
+
+      if (talker) {
+        return (
+          <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+            <Crown size={20} style={{ color: landedTile.color }} />
+            <h3 style={{ margin: '2px 0' }}>Sentence pour {talker.name} ⚖️</h3>
+            <p style={{ marginBottom: '12px', textAlign: 'center', fontSize: '13px' }}>
+              {talker.name} a parlé pendant le silence ! Choisissez sa sentence :
+            </p>
+            <div className="center-actions-stack" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+              <button
+                onClick={() => {
+                  playFail();
+                  resolveBarScenario('resolve_custom', {
+                    buy: false,
+                    sips: { [talker.id]: 6 },
+                    log: `🤫 ${talker.name} a parlé et boit Cul Sec ! ${currentPlayer.name} n'achète pas le bar.`
+                  });
+                }}
+                className="neon-btn fail-btn"
+              >
+                🍺 Boire Cul Sec (6G)
+              </button>
+              <button
+                onClick={() => {
+                  playFail();
+                  resolveBarScenario('resolve_custom', {
+                    buy: false,
+                    movements: { [talker.id]: { position: 0 } },
+                    log: `🏁 ${talker.name} a parlé et retourne au DÉPART ! ${currentPlayer.name} n'achète pas le bar.`
+                  });
+                }}
+                className="neon-btn fail-btn"
+              >
+                ↩️ Retourner au DÉPART
+              </button>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <Crown size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
-          <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn">🤫 Défi Actif (Acheter)</button>
-            <button onClick={() => { playFail(); resolveBarScenario('fail'); }} className="neon-btn fail-btn">❌ Refuser (Boire)</button>
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '12px' }}>{scenario.description}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginBottom: '8px' }}>
+            <button
+              onClick={() => {
+                playSuccess();
+                resolveBarScenario('resolve_custom', {
+                  buy: true,
+                  log: `🤫 Le silence a été respecté ! ${currentPlayer.name} achète ${landedTile.name} gratuitement !`
+                });
+              }}
+              className="neon-btn success-btn"
+              style={{ width: '100%' }}
+            >
+              🤫 Silence respecté (Achat gratuit)
+            </button>
+            <span style={{ fontSize: '11px', opacity: 0.8, textAlign: 'center', marginTop: '4px' }}>Ou désignez le joueur qui a parlé :</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '100px', overflowY: 'auto' }}>
+              {players.map(pl => (
+                <button
+                  key={pl.id}
+                  onClick={() => { playClick(); setInteractiveChoices({ talkerId: pl.id }); }}
+                  className="neon-btn fail-btn"
+                  style={{ padding: '6px', fontSize: '11px', borderColor: pl.color, color: pl.color }}
+                >
+                  🗣️ {pl.name} a parlé
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       );
@@ -345,10 +1121,46 @@ function App() {
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <Flame size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '8px', lineHeight: '1.2' }}>{scenario.description}</p>
-          <div className="center-actions-row">
-            <button onClick={() => { playSuccess(); resolveBarScenario('success'); }} className="neon-btn success-btn">🗣️ Raconter (Acheter)</button>
-            <button onClick={() => { playFail(); resolveBarScenario('fail', { penalty: 6 }); }} className="neon-btn fail-btn">🍺 Refuser & Cul Sec</button>
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '13px' }}>{scenario.description}</p>
+          <div className="center-actions-stack" style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+            <button
+              onClick={() => {
+                playSuccess();
+                resolveBarScenario('resolve_custom', {
+                  buy: true,
+                  log: `🗣️ ${currentPlayer.name} a raconté sa pire honte et achète ${landedTile.name} !`
+                });
+              }}
+              className="neon-btn success-btn"
+            >
+              🗣️ Raconter (Acheter)
+            </button>
+            <button
+              onClick={() => {
+                playFail();
+                resolveBarScenario('resolve_custom', {
+                  buy: false,
+                  sips: { [currentPlayer.id]: 6 },
+                  log: `🍺 ${currentPlayer.name} a refusé de raconter sa honte et boit Cul Sec !`
+                });
+              }}
+              className="neon-btn fail-btn"
+            >
+              🍺 Refuser & Cul Sec (6G)
+            </button>
+            <button
+              onClick={() => {
+                playFail();
+                resolveBarScenario('resolve_custom', {
+                  buy: false,
+                  movements: { [currentPlayer.id]: { position: 0 } },
+                  log: `🏁 ${currentPlayer.name} a refusé de raconter sa honte et retourne au DÉPART !`
+                });
+              }}
+              className="neon-btn fail-btn"
+            >
+              ↩️ Refuser & Retour au DÉPART
+            </button>
           </div>
         </div>
       );
@@ -413,64 +1225,19 @@ function App() {
         </div>
       );
     }
-    if (scenarioNum === 16) {
-      return (
-        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
-          <PartyPopper size={20} style={{ color: landedTile.color }} />
-          <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '6px', lineHeight: '1.2' }}>{scenario.description}</p>
-          <div style={{ opacity: 0.8, marginBottom: '6px' }}>Qui a ri ? (Sélection multiple) :</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '6px' }}>
-            {players.filter(p => p.id !== currentPlayer.id).map((p) => {
-              const isSelected = barScenarioTargetIds?.includes(p.id);
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    const current = barScenarioTargetIds || [];
-                    const next = current.includes(p.id) ? current.filter((id) => id !== p.id) : [...current, p.id];
-                    playClick();
-                    resolveBarScenario('set_targets', { targets: next });
-                  }}
-                  className={`neon-btn ${isSelected ? 'fail-btn' : ''}`}
-                >
-                  😂 {p.name}
-                </button>
-              );
-            })}
-          </div>
-          <div className="center-actions-row">
-            <button
-              onClick={() => {
-                const laughIds = barScenarioTargetIds || [];
-                if (laughIds.length > 0) {
-                  playSuccess();
-                  resolveBarScenario('laugh_recule', { laughIds });
-                } else {
-                  playFail();
-                  resolveBarScenario('recule_active', { recul: 3 });
-                }
-              }}
-              className="neon-btn success-btn"
-              style={{ width: '100%' }}
-            >
-              ✔️ Valider l'effet
-            </button>
-          </div>
-        </div>
-      );
-    }
 
     if (scenarioNum === 21) {
+      const caughtId = barScenarioTargetIds?.[0];
+      const caughtPlayer = players.find((p) => p.id === caughtId);
       return (
         <div className="center-action-card" style={{ borderColor: landedTile.color }}>
           <PartyPopper size={20} style={{ color: landedTile.color }} />
           <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
-          <p style={{ marginBottom: '6px', lineHeight: '1.2' }}>{scenario.description}</p>
-          <div style={{ opacity: 0.8, marginBottom: '6px' }}>Qui a été attrapé ? (Sélection) :</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '6px' }}>
+          <p style={{ marginBottom: '6px', lineHeight: '1.2', fontSize: '13px' }}>{scenario.description}</p>
+          <div style={{ opacity: 0.8, marginBottom: '6px', fontSize: '11px' }}>Qui a été attrapé ? (Sélection) :</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginBottom: '8px' }}>
             {players.filter(p => p.id !== currentPlayer.id).map((p) => {
-              const isSelected = barScenarioTargetIds?.includes(p.id);
+              const isSelected = caughtId === p.id;
               return (
                 <button
                   key={p.id}
@@ -479,20 +1246,20 @@ function App() {
                     playClick();
                     resolveBarScenario('set_targets', { targets: next });
                   }}
-                  className={`neon-btn ${isSelected ? 'fail-btn' : ''}`}
+                  className={`neon-btn ${isSelected ? 'choice-fail-active' : ''}`}
+                  style={{ padding: '6px', fontSize: '12px', borderColor: p.color, color: p.color }}
                 >
-                  🏃 {p.name}
+                  🏃 {p.name} {p.card ? `(${getSuitSymbol(p.card.suit)})` : ''}
                 </button>
               );
             })}
           </div>
-          <div className="center-actions-row">
+          <div className="center-actions-stack" style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
             <button
               onClick={() => {
-                const caughtIds = barScenarioTargetIds || [];
-                if (caughtIds.length > 0) {
+                if (caughtPlayer) {
                   playSuccess();
-                  resolveBarScenario('caught_recule', { caughtIds });
+                  resolveBarScenario('caught_recule', { caughtIds: [caughtPlayer.id] });
                 } else {
                   playFail();
                   resolveBarScenario('recule_active', { recul: 3 });
@@ -501,14 +1268,90 @@ function App() {
               className="neon-btn success-btn"
               style={{ width: '100%' }}
             >
-              ✔️ Valider la Capture
+              Valider la Capture
             </button>
           </div>
         </div>
       );
     }
 
-    if (scenarioNum >= 13 && scenarioNum <= 22 && scenarioNum !== 21) {
+    if (scenarioNum === 22) {
+      const allFilled = players.every((pl) => interactiveChoices[pl.id] !== undefined);
+      return (
+        <div className="center-action-card" style={{ borderColor: landedTile.color }}>
+          <PartyPopper size={20} style={{ color: landedTile.color }} />
+          <h3 style={{ margin: '2px 0' }}>{scenario.title}</h3>
+          <p style={{ marginBottom: '8px', lineHeight: '1.2', fontSize: '12px' }}>{scenario.description}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '8px' }}>
+            {players.map((pl) => {
+              const choice = interactiveChoices[pl.id];
+              return (
+                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                  <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                    {pl.name}
+                    {pl.card && (
+                      <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                        {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
+                      </span>
+                    )}
+                  </span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'success' })); }}
+                      className={`neon-btn ${choice === 'success' ? 'choice-success-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                    >
+                      👍 Réussi
+                    </button>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
+                      className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                    >
+                      6G 🧼
+                    </button>
+                    <button
+                      onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
+                      className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
+                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                    >
+                      DÉPART 🏁
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            disabled={!allFilled}
+            onClick={() => {
+              const sips: Record<string, number> = {};
+              const movements: Record<string, any> = {};
+              players.forEach((pl) => {
+                const choice = interactiveChoices[pl.id];
+                if (choice === 'sip') {
+                  sips[pl.id] = 6;
+                } else if (choice === 'recul') {
+                  movements[pl.id] = { position: 0 };
+                }
+              });
+              resolveBarScenario('resolve_custom', {
+                buy: true,
+                sips,
+                movements,
+                log: `🏢 ${currentPlayer.name} achète ${landedTile.name} ! Les perdants prennent leurs sentences.`
+              });
+            }}
+            className="neon-btn success-btn"
+            style={{ width: '100%' }}
+          >
+            Valider le Défi
+          </button>
+        </div>
+      );
+    }
+
+    if (scenarioNum >= 13 && scenarioNum <= 22 && scenarioNum !== 21 && scenarioNum !== 22) {
       let recul = 3;
       if (scenarioNum === 13 || scenarioNum === 20) {
         recul = 2;
@@ -555,21 +1398,91 @@ function App() {
       );
     }
 
+    // 0.5. Blocked at start check
+    if (currentPlayer.position === 0 && currentPlayer.isLockedAtStart) {
+      if (diceValue === null) {
+        return (
+          <div className="center-roll-view">
+            <h2>Tour de <span style={{ color: currentPlayer.color, textShadow: `0 0 10px ${currentPlayer.color}` }}>{currentPlayer.name}</span></h2>
+            <p style={{ fontSize: '13px', margin: '4px 0 10px', opacity: 0.9 }}>
+              Tu es bloqué(e) au DÉPART 🏁. Fais un <strong>6</strong> au dé pour pouvoir démarrer !
+            </p>
+            <DiceRoller playerColor={currentPlayer.color} onRollComplete={rollDice} />
+          </div>
+        );
+      } else {
+        return (
+          <div className="center-action-card border-neon-red">
+            <AlertTriangle size={24} color="#ff3333" className="bounce" style={{ marginTop: '2px' }} />
+            <h3 className="text-neon-red" style={{ margin: '2px 0' }}>Bloqué(e) au DÉPART</h3>
+            <p style={{ marginBottom: '12px', fontSize: '13px' }}>
+              Résultat du dé : <strong style={{ color: '#ff3333', fontSize: '18px' }}>{diceValue}</strong>. Échec ! Tu restes au DÉPART.
+            </p>
+            <button onClick={() => { playClick(); nextTurn(); }} className="neon-btn" style={{ width: '100%' }}>
+              Finir le tour
+            </button>
+          </div>
+        );
+      }
+    }
+
     // 1. Jail state check
     if (currentPlayer.isPrisoner) {
+      const attempts = currentPlayer.prisonTurns;
+      const rollResult = state.jailRollResult;
+
       return (
         <div className="center-action-card border-neon-red">
           <Shield size={24} color="#ff3333" className="pulse" style={{ marginTop: '2px' }} />
           <h3 className="text-neon-red" style={{ margin: '2px 0' }}>Cellule de Dégrisement</h3>
-          <p style={{ marginBottom: '8px' }}>{currentPlayer.name}, tu es trop ivre ! Tu passes ton tour pour cuver ton alcool.</p>
-          <div className="center-actions-stack" style={{ gap: '4px' }}>
-            <button onClick={() => { playFail(); payJailFine(); }} className="neon-btn red-btn">
-              Payer Caution (2 Shots / 6G)
-            </button>
-            <button onClick={() => { playClick(); nextTurn(); }} className="neon-btn">
-              Passer mon tour
-            </button>
-          </div>
+          
+          {rollResult === undefined || rollResult === null ? (
+            <>
+              <p style={{ marginBottom: '8px', fontSize: '13px' }}>
+                {currentPlayer.name}, tu es en cellule de dégrisement ! Obtiens un <strong>6</strong> au dé pour t'échapper.
+              </p>
+              <div style={{ fontSize: '14px', marginBottom: '8px', opacity: 0.9 }}>
+                Tentatives : <strong style={{ color: '#ff3333' }}>{attempts} / 3</strong>
+              </div>
+              <div className="center-actions-stack" style={{ gap: '6px', width: '100%' }}>
+                <button onClick={() => { playClick(); tryJailRoll(); }} className="neon-btn" style={{ borderColor: '#39ff14', color: '#39ff14', width: '100%' }}>
+                  🎲 Tenter un 6
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ marginBottom: '8px', fontSize: '14px' }}>
+                Résultat du dé : <strong style={{ color: '#ff3333', fontSize: '18px' }}>{rollResult}</strong>
+              </p>
+              
+              {attempts < 3 ? (
+                <>
+                  <p style={{ marginBottom: '12px', fontSize: '13px', color: '#ff3333' }}>
+                    Échec ! Tu restes en cellule. (Tentatives : {attempts}/3)
+                  </p>
+                  <button onClick={() => { playClick(); resolveJailRollResult(); }} className="neon-btn" style={{ width: '100%' }}>
+                    Finir le tour
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ marginBottom: '12px', fontSize: '13px', color: '#ff3333', fontWeight: 'bold' }}>
+                    3ème tentative échouée ! Choisis ton option de sortie obligatoire :
+                  </p>
+                  {/* Choisir de payer la caution libère immédiatement et permet de relancer le dé ce tour-ci. Le retour au départ déplace le joueur et finit son tour. */}
+                  <div className="center-actions-stack" style={{ gap: '6px', width: '100%' }}>
+                    <button onClick={() => { playFail(); payJailFine(); }} className="neon-btn red-btn">
+                      Payer la caution (2 Shots / 6G)
+                    </button>
+                    <button onClick={() => { playClick(); returnToStartFromJail(); }} className="neon-btn" style={{ borderColor: '#ff6c00', color: '#ff6c00' }}>
+                      🏁 Revenir au DÉPART (Gratuit)
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
           {renderSuperPowerButton(6)}
         </div>
       );
@@ -624,36 +1537,21 @@ function App() {
       if (selectedBottleTargetId) {
         const targetPlayer = players.find((p) => p.id === selectedBottleTargetId);
         const targetName = targetPlayer ? targetPlayer.name : 'Adversaire';
-        const penalty = state.activeDuoChallenge?.includes('3 gorgées') ? 3 : 2;
+        
+        const p1Name = currentPlayer.name;
+        const p2Name = targetName;
+        const challengeObj = DUO_CHALLENGES.find(c => {
+          const replaced = c.template.replace(/{p1}/g, p1Name).replace(/{p2}/g, p2Name);
+          return replaced === state.activeDuoChallenge;
+        });
+        const challengeId = challengeObj ? challengeObj.id : 2;
         
         return (
-          <div className="center-action-card border-neon-green" style={{ height: '100%', justifyContent: 'flex-start' }}>
-            <PartyPopper size={20} color="#39ff14" style={{ marginTop: '2px' }} />
-            <h3 className="text-neon-green" style={{ margin: '2px 0' }}>Défi en Duo 🍾</h3>
-            <p style={{ marginBottom: '8px', textAlign: 'center', lineHeight: '1.25' }}>{state.activeDuoChallenge}</p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
-              <button onClick={() => { playSuccess(); resolveDuoPenalty('none', 0); }} className="neon-btn success-btn">
-                🤝 Défi Réussi / Personne ne boit
-              </button>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-                <div style={{ padding: '6px', border: '1px solid rgba(57, 255, 20, 0.2)', borderRadius: '6px', background: 'rgba(57, 255, 20, 0.02)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <button onClick={() => { playFail(); resolveDuoPenalty(currentPlayer.id, penalty); }} className="neon-btn fail-btn">
-                    🍺 {currentPlayer.name}
-                  </button>
-                  {renderSuperPowerButton(penalty)}
-                </div>
-                
-                <button onClick={() => { playFail(); resolveDuoPenalty(selectedBottleTargetId, penalty); }} className="neon-btn fail-btn" style={{ borderColor: targetPlayer?.color, color: targetPlayer?.color }}>
-                  🍺 {targetName}
-                </button>
-              </div>
-              
-              <button onClick={() => { playFail(); resolveDuoPenalty('both', penalty); }} className="neon-btn fail-btn">
-                🍻 Boire les deux !
-              </button>
-            </div>
+          <div className="center-action-card border-neon-green" style={{ height: 'auto', maxHeight: '100%', justifyContent: 'center', padding: '16px 12px', gap: '8px' }}>
+            <PartyPopper size={20} color="#39ff14" />
+            <h3 className="text-neon-green" style={{ margin: '0', fontSize: '20px' }}>Défi en Duo 🍾</h3>
+            <p style={{ margin: '4px 0', textAlign: 'center', lineHeight: '1.25', fontSize: '14px' }}>{state.activeDuoChallenge}</p>
+            {renderDuoChallengeBody(challengeId, targetPlayer, targetName)}
           </div>
         );
       }
@@ -754,7 +1652,7 @@ function App() {
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', width: '100%' }}>
               {otherPlayers.map((op) => (
                 <button key={op.id} onClick={() => { playClick(); selectTargetPlayer(op.id); }} className="neon-btn" style={{ flex: 1, borderColor: op.color, color: op.color }}>
-                  {op.name}
+                  {op.name} {op.card ? `(${getSuitSymbol(op.card.suit)})` : ''}
                 </button>
               ))}
             </div>
@@ -767,7 +1665,7 @@ function App() {
           <div className="center-action-card" style={{ borderColor: landedTile.color }}>
             <PartyPopper size={24} style={{ color: landedTile.color }} />
             <h3 style={{ color: landedTile.color, margin: '2px 0' }}>{landedTile.name}</h3>
-            <p style={{ marginBottom: '6px' }}>Énigme posée à <strong>{targetName}</strong> ! A-t-il trouvé la réponse ?</p>
+            <p style={{ marginBottom: '6px' }}>Énigme posée à <strong>{targetName} {targetPlayer?.card ? `[${targetPlayer.card.cardValue} ${getSuitSymbol(targetPlayer.card.suit)}]` : ''}</strong> ! A-t-il trouvé la réponse ?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
               <div style={{ padding: '4px', border: '1px solid rgba(0, 255, 255, 0.2)', borderRadius: '6px', background: 'rgba(0, 255, 255, 0.02)', display: 'flex', flexDirection: 'column' }}>
                 <button onClick={() => { playFail(); resolveDuoPenalty(currentPlayer.id, 3); }} className="neon-btn fail-btn">
@@ -776,7 +1674,7 @@ function App() {
                 {renderSuperPowerButton(3)}
               </div>
               <button onClick={() => { playFail(); resolveDuoPenalty(selectedBottleTargetId, 3); }} className="neon-btn fail-btn" style={{ borderColor: targetPlayer?.color, color: targetPlayer?.color }}>
-                ❌ Échoué (+3 Gor. pour {targetName})
+                ❌ Échoué (+3 Gor. pour {targetName} {targetPlayer?.card ? `(${getSuitSymbol(targetPlayer.card.suit)})` : ''})
               </button>
             </div>
           </div>
@@ -896,6 +1794,8 @@ function App() {
             playerColor={currentPlayer.color}
             onActionComplete={resolveCard}
             powerButton={renderSuperPowerButton(activeCard.penalty)}
+            players={players}
+            activePlayerId={currentPlayer.id}
           />
         </div>
       )}

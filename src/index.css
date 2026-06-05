@@ -125,13 +125,13 @@ body {
   border-radius: 12px;
   color: var(--text-light);
   font-weight: 600;
-  padding: 14px 16px !important;
+  padding: 14px 16px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-size: 18px !important;
+  font-size: 18px;
   transition: all 0.3s;
 }
 
@@ -564,8 +564,8 @@ body {
   position: relative;
   z-index: 10;
 }
-
-.card-actions button {
+.card-actions > button,
+.card-actions > div > button {
   font-size: 18px !important;
   padding: 14px 10px !important;
   width: 100% !important;
@@ -589,21 +589,21 @@ body {
 
 .center-action-card h3 {
   margin: 0;
-  font-size: 32px !important;
+  font-size: 22px;
   font-weight: 800;
   text-align: center;
 }
 
 .center-action-card p {
-  font-size: 24px !important;
+  font-size: 14px;
   color: var(--text-light);
   line-height: 1.4;
-  margin: 12px 0 !important;
+  margin: 8px 0;
   text-align: center;
 }
 
 .center-action-card div {
-  font-size: 18px !important;
+  font-size: 14px;
 }
 
 .center-actions-row {
@@ -614,8 +614,8 @@ body {
   margin-top: 12px;
 }
 
-.center-action-card button,
-.center-action-card .neon-btn,
+.center-action-card > button,
+.center-action-card > .neon-btn,
 .center-actions-row button,
 .center-actions-stack button {
   width: 100% !important;
@@ -774,6 +774,23 @@ body {
 .red-btn:hover { background: rgba(255, 51, 51, 0.1); }
 .green-btn { border-color: var(--neon-green); color: var(--neon-green); }
 .green-btn:hover { background: rgba(57, 255, 20, 0.1); }
+
+.success-btn {
+  border-color: var(--neon-green) !important;
+  color: var(--neon-green) !important;
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.4) !important;
+}
+.success-btn:hover:not(:disabled) {
+  background: rgba(57, 255, 20, 0.1) !important;
+}
+.fail-btn {
+  border-color: var(--neon-red) !important;
+  color: var(--neon-red) !important;
+  box-shadow: 0 0 10px rgba(255, 51, 51, 0.4) !important;
+}
+.fail-btn:hover:not(:disabled) {
+  background: rgba(255, 51, 51, 0.1) !important;
+}
 
 .border-neon-red { border-color: var(--neon-red) !important; }
 .text-neon-red { color: var(--neon-red) !important; }
@@ -977,3 +994,23 @@ body {
   0% { width: 15%; opacity: 0.6; }
   100% { width: 100%; opacity: 1; }
 }
+
+/* Choice Active States */
+.choice-success-active {
+  border-color: var(--neon-green) !important;
+  color: var(--neon-green) !important;
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.4) !important;
+}
+.choice-success-active:hover:not(:disabled) {
+  background: rgba(57, 255, 20, 0.1) !important;
+}
+
+.choice-fail-active {
+  border-color: var(--neon-red) !important;
+  color: var(--neon-red) !important;
+  box-shadow: 0 0 10px rgba(255, 51, 51, 0.4) !important;
+}
+.choice-fail-active:hover:not(:disabled) {
+  background: rgba(255, 51, 51, 0.1) !important;
+}
+

@@ -67,6 +67,7 @@ export interface Player {
   };
   laps: number;
   powerUsed: boolean;
+  isLockedAtStart?: boolean;
 }
 
 /**
@@ -80,13 +81,15 @@ export interface GameState {
   activeScreen: 'setup' | 'reveal' | 'board' | 'bottle' | 'card' | 'dice' | 'minigame' | 'gameover';
   selectedBottleTargetId: string | null;
   activeDuoChallenge: string | null;
+  activeDuoChallengeType?: 'duel' | 'group' | null;
+  activeDuoChallengePenalty?: number | null;
   diceValue: number | null;
   logMessages: string[];
   isMoving?: boolean;
   activeBarScenario?: number; // Random scenario index (1 to 12)
   barScenarioTargetIds?: string[]; // Player IDs targeted by the active scenario
   barScenarioWinnerId?: string; // Winner or correct target player ID for the scenario
-  barScenarioStage?: 'guess' | 'result'; // Stage for interactive scenarios (like Scenario 12)
+  barScenarioStage?: 'guess' | 'result' | 'resolve_penalties'; // Stage for interactive scenarios (like Scenario 12)
   usedBarScenarios?: number[]; // Scenario indices that were already played
   usedCardIds?: string[]; // Mystery card IDs that were already drawn
   usedDuoChallenges?: number[]; // Duo challenge indices that were already played
@@ -95,5 +98,9 @@ export interface GameState {
     toId: string;
     penalty: number;
   } | null;
+  jailRollResult?: number | null;
+  activeRule?: { text: string; turns: number; ownerName: string } | null;
+  linkedPlayers?: [string, string] | null;
+  linkedTurns?: number | null;
 }
 
