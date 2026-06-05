@@ -18,6 +18,9 @@ import type { Player } from './types';
 function App() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [interactiveChoices, setInteractiveChoices] = useState<Record<string, any>>({});
+  const [showPowerModal, setShowPowerModal] = useState(false);
+  const [powerModalPenalty, setPowerModalPenalty] = useState(0);
+
   const {
     state,
     startGame,
@@ -33,7 +36,7 @@ function App() {
     returnToStartFromJail,
     nextTurn,
     sendToJail,
-    usePlayerPower,
+    usePlayerPower: originalUsePlayerPower,
     resolveAlcootest,
     paySipsAndNextTurn,
     resolveDuoPenalty,
@@ -43,6 +46,13 @@ function App() {
     refuseTransfer,
     resetGame,
   } = useGameState();
+
+  // Enveloppe locale pour fermer automatiquement la modale de pouvoir après utilisation
+  const usePlayerPower = (powerType: 'pique' | 'coeur' | 'carreau' | 'trefle', targetId?: string, penaltyAmount?: number) => {
+    playClick();
+    originalUsePlayerPower(powerType, targetId, penaltyAmount);
+    setShowPowerModal(false);
+  };
 
   const {
     players,
@@ -104,9 +114,39 @@ function App() {
   // Active player object
   const currentPlayer = players[currentPlayerIndex];
 
-  const renderSuperPowerButton = (penaltyAmount: number = 0) => {
+  const renderSuperPowerButton = (penaltyAmount: number = 0, isTriggerOnly: boolean = false) => {
     if (!currentPlayer || currentPlayer.powerUsed) return null;
     const suit = currentPlayer.card?.suit;
+    
+    // Vérifier si le pouvoir est valide pour la situation actuelle
+    let isAvailable = false;
+    if (suit === 'pique') {
+      isAvailable = true;
+    } else if (suit === 'coeur' && penaltyAmount > 0) {
+      isAvailable = true;
+    } else if (suit === 'carreau') {
+      isAvailable = true;
+    } else {
+      const landedTile = tiles[currentPlayer.position];
+      if (suit === 'trefle' && landedTile && landedTile.type === 'bar') {
+        isAvailable = true;
+      }
+    }
+
+    if (!isAvailable) return null;
+
+    if (isTriggerOnly) {
+      return (
+        <button
+          onClick={() => { playClick(); setPowerModalPenalty(penaltyAmount); setShowPowerModal(true); }}
+          className="neon-btn"
+          style={{ width: '100%', borderColor: '#ffff00', color: '#ffff00', marginTop: '10px', boxShadow: '0 0 10px rgba(255, 255, 0, 0.4)' }}
+        >
+          ⚡ Pouvoir Fétiche
+        </button>
+      );
+    }
+
     if (suit === 'pique') {
       return (
         <button onClick={() => usePlayerPower('pique')} className="neon-btn" style={{ width: '100%', borderColor: '#ff007f', color: '#ff007f', marginTop: '10px', boxShadow: '0 0 10px rgba(255, 0, 127, 0.4)' }}>
@@ -1501,7 +1541,7 @@ function App() {
               )}
             </>
           )}
-          {renderSuperPowerButton(6)}
+          {renderSuperPowerButton(6, true)}
         </div>
       );
     }
@@ -1541,7 +1581,7 @@ function App() {
                 <button onClick={() => { playFail(); paySipsAndNextTurn(3); }} className="neon-btn fail-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
                   Payer 3 gorgées
                 </button>
-                {renderSuperPowerButton(3)}
+                {renderSuperPowerButton(3, true)}
               </div>
             ) : (
               <button onClick={() => { playSuccess(); paySipsAndNextTurn(0); }} className="neon-btn success-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
@@ -1603,7 +1643,7 @@ function App() {
               <button onClick={() => { playSuccess(); resolveBar(true); nextTurn(); }} className="neon-btn success-btn">Réussi !</button>
               <button onClick={() => { playFail(); resolveBar(false); nextTurn(); }} className="neon-btn fail-btn">Boire</button>
             </div>
-            {renderSuperPowerButton(landedTile.price || 3)}
+            {renderSuperPowerButton(landedTile.price || 3, true)}
           </div>
         );
       }
@@ -1619,7 +1659,7 @@ function App() {
             <button onClick={() => { playFail(); resolveBar(false); nextTurn(); }} className="neon-btn fail-btn" style={{ borderColor: owner.color, color: owner.color }}>
               Prendre mes {rentPrice} gorgées
             </button>
-            {renderSuperPowerButton(rentPrice)}
+            {renderSuperPowerButton(rentPrice, true)}
           </div>
         );
       }
@@ -1638,7 +1678,7 @@ function App() {
             <button onClick={() => { playSuccess(); resolveBar(true); nextTurn(); }} className="neon-btn success-btn">Défi Réussi !</button>
             <button onClick={() => { playFail(); resolveBar(false); nextTurn(); }} className="neon-btn fail-btn">Boire</button>
           </div>
-          {renderSuperPowerButton(landedTile.price || 3)}
+          {renderSuperPowerButton(landedTile.price || 3, true)}
         </div>
       );
     }
@@ -1652,7 +1692,7 @@ function App() {
           <button onClick={() => { playFail(); sendToJail(currentPlayer.id); nextTurn(); }} className="neon-btn red-btn">
             Aller en Cellule
           </button>
-          {renderSuperPowerButton(0)}
+          {renderSuperPowerButton(0, true)}
         </div>
       );
     }
@@ -1689,7 +1729,7 @@ function App() {
                 <button onClick={() => { playFail(); resolveDuoPenalty(currentPlayer.id, 3); }} className="neon-btn fail-btn">
                   💡 Réussi (+3 Gor. pour toi, {currentPlayer.name})
                 </button>
-                {renderSuperPowerButton(3)}
+                {renderSuperPowerButton(3, true)}
               </div>
               <button onClick={() => { playFail(); resolveDuoPenalty(selectedBottleTargetId, 3); }} className="neon-btn fail-btn" style={{ borderColor: targetPlayer?.color, color: targetPlayer?.color }}>
                 ❌ Échoué (+3 Gor. pour {targetName} {targetPlayer?.card ? `(${getSuitSymbol(targetPlayer.card.suit)})` : ''})
@@ -1708,7 +1748,7 @@ function App() {
           <button onClick={() => { playClick(); resolveAlcootest(); }} className="neon-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
             🧪 Souffler dans le Ballon
           </button>
-          {renderSuperPowerButton(0)}
+          {renderSuperPowerButton(0, true)}
         </div>
       );
     }
@@ -1726,7 +1766,7 @@ function App() {
               <button onClick={() => { playFail(); paySipsAndNextTurn(3); }} className="neon-btn fail-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
                 Payer 3 gorgées d'amende
               </button>
-              {renderSuperPowerButton(3)}
+              {renderSuperPowerButton(3, true)}
             </div>
           ) : (
             <button onClick={() => { playSuccess(); paySipsAndNextTurn(0); }} className="neon-btn success-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
@@ -1750,14 +1790,14 @@ function App() {
               <button onClick={() => { playFail(); paySipsAndNextTurn(4); }} className="neon-btn fail-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
                 Option A : Payer 4 gorgées 💸
               </button>
-              {renderSuperPowerButton(4)}
+              {renderSuperPowerButton(4, true)}
             </div>
             
             <div style={{ padding: '4px', border: '1px solid rgba(255, 255, 0, 0.15)', borderRadius: '8px', backgroundColor: 'rgba(255, 255, 0, 0.03)', display: 'flex', flexDirection: 'column' }}>
               <button onClick={() => { playFail(); paySipsAndNextTurn(6); }} className="neon-btn fail-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
                 Option B : Faire Cul sec ! 🍻
               </button>
-              {renderSuperPowerButton(6)}
+              {renderSuperPowerButton(6, true)}
             </div>
           </div>
         ) : landedTile.name.includes('Tournée') ? (
@@ -1765,7 +1805,7 @@ function App() {
             <button onClick={() => { playSuccess(); resolveTourneeGenerale(); }} className="neon-btn success-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
               🍻 Tout le monde boit 1 gorgée
             </button>
-            {renderSuperPowerButton(1)}
+            {renderSuperPowerButton(1, true)}
           </div>
         ) : (
           <button onClick={() => { playClick(); nextTurn(); }} className="neon-btn" style={{ borderColor: landedTile.color, color: landedTile.color }}>
@@ -1774,6 +1814,40 @@ function App() {
         )}
       </div>
     );
+  };
+
+  /**
+   * Détermine si une action ou un défi interactif est en cours au centre.
+   * Exclut le cas où le joueur se déplace ou doit simplement lancer le dé.
+   */
+  const isActionActive = 
+    !state.isMoving && 
+    activeScreen !== 'card' &&
+    (
+      activeScreen === 'bottle' || 
+      activeScreen === 'minigame' || 
+      currentPlayer?.isPrisoner || 
+      (currentPlayer?.position === 0 && currentPlayer?.isLockedAtStart && diceValue !== null) || 
+      (diceValue !== null)
+    );
+
+  /**
+   * Rendu de la zone centrale du plateau.
+   * Si un défi interactif est actif, affiche un placeholder discret car le défi
+   * est rendu dans une fenêtre modale overlay de premier plan.
+   */
+  const renderCenterComponent = () => {
+    if (isActionActive) {
+      return (
+        <div className="center-roll-view">
+          <h2 style={{ fontSize: '18px', color: currentPlayer.color, textShadow: `0 0 10px ${currentPlayer.color}` }}>
+            🎯 Défi en cours...
+          </h2>
+          <p style={{ fontSize: '12px', opacity: 0.8 }}>Relevez le défi dans la fenêtre modale</p>
+        </div>
+      );
+    }
+    return renderCenter();
   };
 
   return (
@@ -1799,7 +1873,7 @@ function App() {
           tiles={tiles}
           players={players}
           currentPlayerIndex={currentPlayerIndex}
-          centerComponent={renderCenter()}
+          centerComponent={renderCenterComponent()}
         />
       </div>
 
@@ -1811,10 +1885,59 @@ function App() {
             playerName={currentPlayer.name}
             playerColor={currentPlayer.color}
             onActionComplete={resolveCard}
-            powerButton={renderSuperPowerButton(activeCard.penalty)}
+            powerButton={renderSuperPowerButton(activeCard.penalty, true)}
             players={players}
             activePlayerId={currentPlayer.id}
           />
+        </div>
+      )}
+
+      {/* Action Modal Overlay */}
+      {isActionActive && (
+        <div className="modal-backdrop">
+          <div className="modal-action-wrapper" style={{ width: '100%', maxWidth: '340px', margin: 'auto' }}>
+            {renderCenter()}
+          </div>
+        </div>
+      )}
+
+      {/* Super Power Modal Overlay */}
+      {showPowerModal && (
+        <div className="modal-backdrop" style={{ zIndex: 1100 }}>
+          <div className="center-action-card border-neon-blue" style={{ maxWidth: '320px', padding: '24px', background: 'rgba(5, 5, 21, 0.98)', boxShadow: '0 0 25px rgba(0, 242, 254, 0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+            <Crown size={32} color="#00f2fe" className="pulse" />
+            <h3 className="text-neon-blue" style={{ fontSize: '24px', fontWeight: 800 }}>⚡ Pouvoir Fétiche</h3>
+            
+            <div style={{ textAlign: 'center', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '12px', background: 'rgba(255, 255, 255, 0.02)', width: '100%', boxSizing: 'border-box' }}>
+              <span className="player-fetiche-badge" style={{ fontSize: '18px', padding: '6px 12px', marginBottom: '8px' }}>
+                {currentPlayer.card?.cardValue}{getSuitSymbol(currentPlayer.card?.suit || '')}
+              </span>
+              <h4 style={{ margin: '8px 0 4px', fontSize: '16px', color: '#fff' }}>
+                {currentPlayer.card?.suit === 'pique' && 'Bouclier de Pique'}
+                {currentPlayer.card?.suit === 'coeur' && 'Flèche de Cœur'}
+                {currentPlayer.card?.suit === 'carreau' && 'Turbo Relance'}
+                {currentPlayer.card?.suit === 'trefle' && 'Pacte de Trèfle'}
+              </h4>
+              <p style={{ fontSize: '13px', color: '#aaa', margin: '4px 0', lineHeight: 1.3 }}>
+                {currentPlayer.card?.suit === 'pique' && 'Annule immédiatement toute pénalité ou taxe.'}
+                {currentPlayer.card?.suit === 'coeur' && 'Transfère vos gorgées de pénalité à un autre joueur.'}
+                {currentPlayer.card?.suit === 'carreau' && 'Relance le dé immédiatement pour ce tour.'}
+                {currentPlayer.card?.suit === 'trefle' && "Permet d'acquérir le bar sur lequel vous atterrissez gratuitement."}
+              </p>
+            </div>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {renderSuperPowerButton(powerModalPenalty)}
+            </div>
+
+            <button
+              onClick={() => setShowPowerModal(false)}
+              className="neon-btn fail-btn"
+              style={{ width: '100%', marginTop: '10px' }}
+            >
+              Fermer
+            </button>
+          </div>
         </div>
       )}
 

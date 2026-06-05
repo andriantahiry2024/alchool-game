@@ -35,6 +35,9 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
   // Selected choices for each player
   const [cardChoices, setCardChoices] = useState<Record<string, 'ok' | 'sip' | 'recul' | 'cul_sec' | 'depart'>>({});
 
+  // Controls displaying card action choices inside a modal backdrop overlay
+  const [showActionsModal, setShowActionsModal] = useState(false);
+
   const handleFlip = () => {
     if (flipped) return;
     playClick();
@@ -372,10 +375,37 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
 
       {flipped && (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="card-actions" style={{ width: '100%', flexDirection: 'column', gap: '8px' }}>
-            {renderActions()}
-          </div>
+          <button
+            onClick={() => { playClick(); setShowActionsModal(true); }}
+            className="neon-btn success-btn"
+            style={{ width: '100%', marginTop: '10px' }}
+          >
+            📋 Voir Actions
+          </button>
           {powerButton}
+        </div>
+      )}
+
+      {/* Card Actions Modal Overlay */}
+      {showActionsModal && (
+        <div className="modal-backdrop" style={{ zIndex: 1200 }}>
+          <div className="center-action-card border-neon-green" style={{ maxWidth: '340px', padding: '24px', background: 'rgba(5, 5, 21, 0.98)', boxShadow: '0 0 25px rgba(57, 255, 20, 0.4)', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <h3 style={{ margin: 0, textAlign: 'center', color: suitColor, textShadow: `0 0 8px ${suitColor}`, fontSize: '20px', fontWeight: 800 }}>
+              Résolution : {card.title}
+            </h3>
+            
+            <div className="card-actions" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {renderActions()}
+            </div>
+
+            <button
+              onClick={() => { playClick(); setShowActionsModal(false); }}
+              className="neon-btn fail-btn"
+              style={{ width: '100%', marginTop: '5px' }}
+            >
+              Fermer
+            </button>
+          </div>
         </div>
       )}
     </div>

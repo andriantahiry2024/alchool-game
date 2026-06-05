@@ -755,3 +755,30 @@
     - [x] Vérification des imports : Nettoyer ou vérifier tous les imports.
     - [x] Vérification de la syntaxe : S'assurer de la conformité TypeScript/JSX et compiler via `npm run build`.
     - [x] Test unitaire (jest DOM) : Adapter le test de capture existant dans `tests/game.spec.ts` pour valider que le joueur attrapé va en prison, et ajouter un test validant que si personne n'est capturé, le joueur actif va en prison.
+
+## Phase 53 : Modales pour Actions et Pouvoirs Fétiches
+* **[Affichage des Actions et Pouvoirs dans des Fenêtres Modales]**
+    - [x] Implémentation :
+        1. Dans `App.tsx`, définir `isActionActive` pour détecter si une action ou un défi interactif est en cours (hors pioche de carte fétiche, et hors lancer de dé/animation).
+        2. Rendre `renderCenter()` dans un modal overlay `modal-backdrop` si `isActionActive` est vrai. Rendre un simple placeholder de statut ("Défi en cours...") dans le centre du plateau.
+        3. Ajouter l'état `showPowerModal` et `powerModalPenalty` dans `App.tsx`.
+        4. Modifier la structure de `renderSuperPowerButton` pour renvoyer un bouton unique de déclenchement `⚡ Pouvoir Fétiche` s'il est appelé depuis l'action card, et afficher les véritables boutons d'action de pouvoir dans une fenêtre modale centrée (surcouche de pouvoir fétiche).
+        5. Ajuster le composant `CardDrawer` dans `App.tsx` pour lui passer le déclencheur de pouvoir et gérer son affichage modal.
+        6. Styliser `.modal-backdrop .center-action-card` dans `src/index.css` pour qu'il soit bien proportionné, centré, avec un fond opaque et scrollable si besoin.
+    - [x] Documentation (JSDoc et commentaires) : JSDoc et commentaires clairs pour la structure des modales d'actions et de pouvoirs fétiches.
+    - [x] Vérification des imports : Valider tous les imports (notamment Lucide ou React).
+    - [x] Vérification de la syntaxe : S'assurer que `npm run build` passe sans erreur.
+    - [x] Test unitaire (jest DOM) : S'assurer du bon passage des tests Playwright existants avec les modales, et ajouter ou adapter les assertions nécessaires.
+
+## Phase 54 : Correction de l'affichage de la pioche de cartes et actions de cartes en modale
+* **[Correction et Amélioration de la Visibilité des Cartes et de Leurs Actions]**
+    - [x] Implémentation :
+        1. Dans `src/App.tsx`, modifier `isActionActive` pour exclure `activeScreen === 'card'`.
+        2. Dans `src/components/CardDrawer.tsx`, ajouter l'état `showActionsModal` pour contrôler l'ouverture de la modale des actions.
+        3. Dans `src/components/CardDrawer.tsx`, quand la carte est retournée (`flipped` est vrai), afficher un bouton "Voir Actions" qui ouvre la modale. Rendre les actions du joueur (`renderActions()`) à l'intérieur de cette modale `showActionsModal` (bien centrée, avec `modal-backdrop`).
+        4. S'assurer que le bouton de pouvoir fétiche (`powerButton`) reste affiché sur la vue principale de la carte ou sous le bouton "Voir Actions".
+    - [x] Documentation (JSDoc et commentaires) : Ajouter des explications dans `CardDrawer.tsx` et `App.tsx` sur l'affichage modale centré des actions.
+    - [x] Vérification des imports : Nettoyer ou vérifier tous les imports.
+    - [x] Vérification de la syntaxe : S'assurer que `npm run build` passe sans erreur.
+    - [x] Test unitaire (jest DOM) : Mettre à jour `tests/game.spec.ts` pour que les tests cliquent d'abord sur "Voir Actions" avant de cliquer sur "Appliquer l'effet", et s'assurer que tous les tests passent.
+

@@ -82,7 +82,17 @@ test.describe('Alcooly Full Game Loop E2E', () => {
       await page.locator('.card-3d').click();
       await page.waitForTimeout(1000);
       // Validate the challenge
-      await page.locator('.success-btn').click();
+      const voirActionsBtn = page.locator('button:has-text("Voir Actions")');
+      if (await voirActionsBtn.isVisible()) {
+        await voirActionsBtn.click();
+        await page.waitForTimeout(500);
+      }
+      const applyBtn = page.locator('button:has-text("Appliquer l\'effet")').first();
+      if (await applyBtn.isVisible()) {
+        await applyBtn.click();
+      } else {
+        await page.locator('.success-btn').click();
+      }
       await page.waitForTimeout(500);
       if (await page.locator('.neon-btn:has-text("Suivant")').isVisible()) {
         await page.locator('.neon-btn:has-text("Suivant")').click();
@@ -247,6 +257,11 @@ test.describe('Alcooly Full Game Loop E2E', () => {
     // Recharger la page pour charger l'état mocké
     await page.reload();
 
+    // Cliquer sur le bouton déclencheur de pouvoir fétiche
+    const powerTriggerBtn = page.locator('button:has-text("Pouvoir Fétiche")').first();
+    await expect(powerTriggerBtn).toBeVisible();
+    await powerTriggerBtn.click();
+
     // Vérifier que nous sommes sur la case avec le bouton de pouvoir visible
     const heartPowerBtn = page.locator('text=Flèche de Cœur').first();
     await expect(heartPowerBtn).toBeVisible();
@@ -331,6 +346,13 @@ test.describe('Alcooly Full Game Loop E2E', () => {
 
     // Cliquer sur le dos de la carte pour la retourner
     await card3d.click();
+    await page.waitForTimeout(500);
+
+    // Cliquer sur Voir Actions pour ouvrir le modal
+    const voirActionsBtn = page.locator('button:has-text("Voir Actions")');
+    await expect(voirActionsBtn).toBeVisible();
+    await voirActionsBtn.click();
+    await page.waitForTimeout(500);
 
     // Cliquer sur le bouton d'effet
     const applyEffectBtn = page.locator('button:has-text("Appliquer l\'effet")').first();
@@ -421,6 +443,13 @@ test.describe('Alcooly Full Game Loop E2E', () => {
 
     // Cliquer sur le dos de la carte pour la retourner
     await card3d.click();
+    await page.waitForTimeout(500);
+
+    // Cliquer sur Voir Actions pour ouvrir le modal
+    const voirActionsBtn = page.locator('button:has-text("Voir Actions")');
+    await expect(voirActionsBtn).toBeVisible();
+    await voirActionsBtn.click();
+    await page.waitForTimeout(500);
 
     // Cliquer sur le bouton d'effet
     const applyEffectBtn = page.locator('button:has-text("Appliquer l\'effet")').first();
@@ -950,6 +979,12 @@ test.describe('Alcooly Full Game Loop E2E', () => {
 
     // Click to flip
     await card3d.click();
+    await page.waitForTimeout(500);
+
+    // Click Voir Actions button to open actions modal
+    const voirActionsBtn = page.locator('button:has-text("Voir Actions")');
+    await expect(voirActionsBtn).toBeVisible();
+    await voirActionsBtn.click();
     await page.waitForTimeout(500);
 
     // Click apply effect button
