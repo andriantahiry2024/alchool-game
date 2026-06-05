@@ -1083,24 +1083,25 @@ export function useGameState() {
         log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! Les rieurs reculent de 3 cases ⬅️ !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'caught_recule') {
+        // Le joueur actif a réussi son défi et achète le bar.
+        // Le(s) joueur(s) capturé(s) sont envoyé(s) directement en cellule de dégrisement (prison).
         currentTile.ownerId = currentPlayer.id;
         currentTile.level = 1;
         currentPlayer.challengesCompleted += 1;
         const caughtIds: string[] = payload?.caughtIds || [];
         caughtIds.forEach((id) => {
           const idx = players.findIndex((pl) => pl.id === id);
-          if (idx !== -1 && !players[idx].isPrisoner) {
-            const oldPos = players[idx].position;
-            const newPos = Math.max(0, oldPos - 3);
+          if (idx !== -1) {
             players[idx] = { 
               ...players[idx], 
-              position: newPos,
-              isLockedAtStart: newPos === 0 ? true : players[idx].isLockedAtStart
+              position: 8, // CELLULE DÉGRISEMENT
+              isPrisoner: true,
+              prisonTurns: 0
             };
           }
         });
         const caughtNames = caughtIds.map(id => players.find(p => p.id === id)?.name).join(', ');
-        log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! ${caughtNames} est attrapé(e) et recule de 3 cases ⬅️ !`;
+        log = `🏢 ${currentPlayer.name} achète ${currentTile.name} ! ${caughtNames} est attrapé(e) et va en cellule de dégrisement 🚨 !`;
         nextIndex = (currentPlayerIndex + 1) % players.length;
       } else if (action === 'guess') {
         const guessId = payload?.guessId;

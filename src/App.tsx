@@ -1255,21 +1255,39 @@ function App() {
             })}
           </div>
           <div className="center-actions-stack" style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
-            <button
-              onClick={() => {
-                if (caughtPlayer) {
+            {/* 
+              Si un joueur a été capturé, le bouton valide sa capture et l'envoie en cellule (caught_recule).
+              Sinon, le joueur actif a échoué et va lui-même en cellule de dégrisement.
+            */}
+            {caughtPlayer ? (
+              <button
+                onClick={() => {
                   playSuccess();
                   resolveBarScenario('caught_recule', { caughtIds: [caughtPlayer.id] });
-                } else {
+                }}
+                className="neon-btn success-btn"
+                style={{ width: '100%' }}
+              >
+                Valider la Capture de {caughtPlayer.name}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
                   playFail();
-                  resolveBarScenario('recule_active', { recul: 3 });
-                }
-              }}
-              className="neon-btn success-btn"
-              style={{ width: '100%' }}
-            >
-              Valider la Capture
-            </button>
+                  resolveBarScenario('resolve_custom', {
+                    buy: false,
+                    movements: {
+                      [currentPlayer.id]: { position: 8, isPrisoner: true }
+                    },
+                    log: `🚨 Personne n'a été attrapé ! ${currentPlayer.name} va en cellule de dégrisement !`
+                  });
+                }}
+                className="neon-btn fail-btn"
+                style={{ width: '100%' }}
+              >
+                Aucune capture (Aller en dégrisement 🚨)
+              </button>
+            )}
           </div>
         </div>
       );

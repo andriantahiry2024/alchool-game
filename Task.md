@@ -745,3 +745,13 @@
     - [x] Vérification des imports : Aucun import mort.
     - [x] Vérification de la syntaxe : Lancer `npm run build`.
     - [x] Test unitaire (jest DOM) : Relancer Playwright pour valider que tous les tests passent.
+
+## Phase 52 : Correction et cohérence du Scénario 21 (Le chat et la souris)
+* **[Correction Scénario 21 et Option de Prison]**
+    - [x] Implémentation :
+        1. Modifier `useGameState.ts` dans `caught_recule` pour que le joueur attrapé soit envoyé en cellule de dégrisement (position 8, isPrisoner: true, prisonTurns: 0) au lieu de reculer de 3 cases.
+        2. Modifier `App.tsx` (scénario 21) pour afficher le bouton "Aucune capture (Aller en dégrisement 🚨)" quand aucun joueur n'est sélectionné, qui appelle `resolveBarScenario('resolve_custom', ...)` pour envoyer le joueur actif en cellule. Si un joueur est sélectionné, le bouton affiche "Valider la Capture de [Nom]".
+    - [x] Documentation (JSDoc et commentaires) : Expliquer dans `App.tsx` et `useGameState.ts` la mise en conformité du scénario avec les règles (envoi en cellule).
+    - [x] Vérification des imports : Nettoyer ou vérifier tous les imports.
+    - [x] Vérification de la syntaxe : S'assurer de la conformité TypeScript/JSX et compiler via `npm run build`.
+    - [x] Test unitaire (jest DOM) : Adapter le test de capture existant dans `tests/game.spec.ts` pour valider que le joueur attrapé va en prison, et ajouter un test validant que si personne n'est capturé, le joueur actif va en prison.
