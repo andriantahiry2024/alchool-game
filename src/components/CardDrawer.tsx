@@ -58,10 +58,10 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
     return vowels.includes(firstChar) ? `d'${name}` : `de ${name}`;
   };
   const getSuitSymbol = (suit: string) => {
-    if (suit === 'pique') return '♠️';
+    if (suit === 'pique') return '♠';
     if (suit === 'coeur') return '♥️';
     if (suit === 'carreau') return '♦️';
-    return '♣️';
+    return '♣';
   };
 
   const getSuitName = () => {
@@ -224,11 +224,11 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
           {players.map((pl) => {
             const choice = cardChoices[pl.id] || 'ok';
             return (
-              <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+              <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                   {pl.name}
                   {pl.card && (
-                    <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                    <span className="player-fetiche-badge">
                       {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                     </span>
                   )}
@@ -237,7 +237,7 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
                   <button
                     onClick={() => { playClick(); setCardChoices(prev => ({ ...prev, [pl.id]: 'ok' })); }}
                     className={`neon-btn ${choice === 'ok' ? 'choice-success-active' : ''}`}
-                    style={{ padding: '4px 6px', fontSize: '9px' }}
+                    style={{ padding: '5px 8px', fontSize: '11px' }}
                   >
                     🏆 OK
                   </button>
@@ -246,7 +246,7 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
                     <button
                       onClick={() => { playClick(); setCardChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
                       className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       Boire {config.sips}G 🍺
                     </button>
@@ -256,7 +256,7 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
                     <button
                       onClick={() => { playClick(); setCardChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
                       className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       Reculer {config.recul}C ⬅️
                     </button>
@@ -266,7 +266,7 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
                     <button
                       onClick={() => { playClick(); setCardChoices(prev => ({ ...prev, [pl.id]: 'cul_sec' })); }}
                       className={`neon-btn ${choice === 'cul_sec' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       Cul Sec 🍺
                     </button>
@@ -276,7 +276,7 @@ export const CardDrawer: React.FC<CardDrawerProps> = ({
                     <button
                       onClick={() => { playClick(); setCardChoices(prev => ({ ...prev, [pl.id]: 'depart' })); }}
                       className={`neon-btn ${choice === 'depart' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       DÉPART 🏁
                     </button>

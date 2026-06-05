@@ -95,10 +95,10 @@ function App() {
   }, [state.activeScreen, state.activeBarScenario, state.activeDuoChallenge, state.activeCard?.id, state.selectedBottleTargetId, state.currentPlayerIndex, state.players, state.barScenarioTargetIds]);
 
   const getSuitSymbol = (suit: string) => {
-    if (suit === 'pique') return '♠️';
+    if (suit === 'pique') return '♠';
     if (suit === 'coeur') return '♥️';
     if (suit === 'carreau') return '♦️';
-    return '♣️';
+    return '♣';
   };
 
   // Active player object
@@ -219,11 +219,11 @@ function App() {
             {players.map((pl) => {
               const choice = interactiveChoices[pl.id];
               return (
-                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                  <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                  <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                     {pl.name}
                     {pl.card && (
-                      <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                      <span className="player-fetiche-badge">
                         {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                       </span>
                     )}
@@ -232,21 +232,21 @@ function App() {
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'rigole' })); }}
                       className={`neon-btn ${choice === 'rigole' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       Rigole (6G)
                     </button>
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'non_rigole' })); }}
                       className={`neon-btn ${choice === 'non_rigole' ? 'choice-success-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       Ne rigole pas
                     </button>
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'depart' })); }}
                       className={`neon-btn ${choice === 'depart' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '9px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       DÉPART 🏁
                     </button>
@@ -289,11 +289,11 @@ function App() {
           {duoPlayers.map((pl) => {
             const choice = interactiveChoices[pl.id];
             return (
-              <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+              <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                   {pl.name}
                   {pl.card && (
-                    <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                    <span className="player-fetiche-badge">
                       {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                     </span>
                   )}
@@ -302,21 +302,21 @@ function App() {
                   <button
                     onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'gagne' })); }}
                     className={`neon-btn ${choice === 'gagne' ? 'choice-success-active' : ''}`}
-                    style={{ padding: '4px 6px', fontSize: '10px' }}
+                    style={{ padding: '5px 8px', fontSize: '11px' }}
                   >
                     🏆 Gagné
                   </button>
                   <button
                     onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
                     className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
-                    style={{ padding: '4px 6px', fontSize: '10px' }}
+                    style={{ padding: '5px 8px', fontSize: '11px' }}
                   >
                     Boire {config.sips}G 🍺
                   </button>
                   <button
                     onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
                     className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
-                    style={{ padding: '4px 6px', fontSize: '10px' }}
+                    style={{ padding: '5px 8px', fontSize: '11px' }}
                   >
                     Reculer {config.recul}C ⬅️
                   </button>
@@ -407,11 +407,11 @@ function App() {
             {players.map((pl) => {
               const choice = interactiveChoices[pl.id];
               return (
-                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                  <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                  <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                     {pl.name}
                     {pl.card && (
-                      <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                      <span className="player-fetiche-badge">
                         {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                       </span>
                     )}
@@ -420,21 +420,21 @@ function App() {
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'montre' })); }}
                       className={`neon-btn ${choice === 'montre' ? 'choice-success-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       🩲 Montré
                     </button>
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
                       className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       Boire 3G 🍺
                     </button>
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
                       className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       DÉPART 🏁
                     </button>
@@ -570,11 +570,11 @@ function App() {
               {otherPlayers.map((pl) => {
                 const choice = interactiveChoices[pl.id];
                 return (
-                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                    <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                    <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                       {pl.name}
                       {pl.card && (
-                        <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                        <span className="player-fetiche-badge">
                           {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                         </span>
                       )}
@@ -583,14 +583,14 @@ function App() {
                       <button
                         onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
                         className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
-                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                        style={{ padding: '5px 8px', fontSize: '11px' }}
                       >
                         Boire 2G 🍺
                       </button>
                       <button
                         onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
                         className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
-                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                        style={{ padding: '5px 8px', fontSize: '11px' }}
                       >
                         Reculer 2C ⬅️
                       </button>
@@ -650,11 +650,11 @@ function App() {
               {targetPlayers.map((pl) => {
                 const choice = interactiveChoices[pl.id];
                 return (
-                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                    <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                    <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                       {pl.name}
                       {pl.card && (
-                        <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                        <span className="player-fetiche-badge">
                           {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                         </span>
                       )}
@@ -663,14 +663,14 @@ function App() {
                       <button
                         onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sec' })); }}
                         className={`neon-btn ${choice === 'sec' ? 'choice-fail-active' : ''}`}
-                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                        style={{ padding: '5px 8px', fontSize: '11px' }}
                       >
                         Cul Sec 🍺
                       </button>
                       <button
                         onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'depart' })); }}
                         className={`neon-btn ${choice === 'depart' ? 'choice-fail-active' : ''}`}
-                        style={{ padding: '4px 6px', fontSize: '10px' }}
+                        style={{ padding: '5px 8px', fontSize: '11px' }}
                       >
                         DÉPART 🏁
                       </button>
@@ -857,11 +857,11 @@ function App() {
               {rieurs.map((pl) => {
                 const choice = interactiveChoices[pl.id];
                 return (
-                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                    <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                  <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                    <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                       {pl.name}
                       {pl.card && (
-                        <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                        <span className="player-fetiche-badge">
                           {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                         </span>
                       )}
@@ -872,14 +872,14 @@ function App() {
                           <button
                             onClick={() => { playClick(); resolveBarScenario('laugh_penalty', { playerId: pl.id, penaltyType: 'cul_sec' }); }}
                             className="neon-btn fail-btn"
-                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                            style={{ padding: '5px 8px', fontSize: '11px' }}
                           >
                             Boire Cul sec 🍺
                           </button>
                           <button
                             onClick={() => { playClick(); resolveBarScenario('laugh_penalty', { playerId: pl.id, penaltyType: 'depart' }); }}
                             className="neon-btn fail-btn"
-                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                            style={{ padding: '5px 8px', fontSize: '11px' }}
                           >
                             Retourner au DÉPART
                           </button>
@@ -889,14 +889,14 @@ function App() {
                           <button
                             onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sec' })); }}
                             className={`neon-btn ${choice === 'sec' ? 'choice-fail-active' : ''}`}
-                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                            style={{ padding: '5px 8px', fontSize: '11px' }}
                           >
                             Cul Sec 🍺
                           </button>
                           <button
                             onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
                             className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
-                            style={{ padding: '4px 6px', fontSize: '10px' }}
+                            style={{ padding: '5px 8px', fontSize: '11px' }}
                           >
                             Reculer 4C ⬅️
                           </button>
@@ -1286,11 +1286,11 @@ function App() {
             {players.map((pl) => {
               const choice = interactiveChoices[pl.id];
               return (
-                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                  <span style={{ color: pl.color, fontSize: '12px', fontWeight: 600 }}>
+                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                  <span style={{ color: pl.color, fontSize: '14px', fontWeight: 600 }}>
                     {pl.name}
                     {pl.card && (
-                      <span style={{ marginLeft: '4px', opacity: 0.75, fontSize: '10px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                      <span className="player-fetiche-badge">
                         {pl.card.cardValue}{getSuitSymbol(pl.card.suit)}
                       </span>
                     )}
@@ -1299,21 +1299,21 @@ function App() {
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'success' })); }}
                       className={`neon-btn ${choice === 'success' ? 'choice-success-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       👍 Réussi
                     </button>
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'sip' })); }}
                       className={`neon-btn ${choice === 'sip' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       6G 🧼
                     </button>
                     <button
                       onClick={() => { playClick(); setInteractiveChoices(prev => ({ ...prev, [pl.id]: 'recul' })); }}
                       className={`neon-btn ${choice === 'recul' ? 'choice-fail-active' : ''}`}
-                      style={{ padding: '4px 6px', fontSize: '10px' }}
+                      style={{ padding: '5px 8px', fontSize: '11px' }}
                     >
                       DÉPART 🏁
                     </button>

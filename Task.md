@@ -735,3 +735,13 @@
     - [x] Vérification des imports : Valider les imports des symboles ou fonctions requis.
     - [x] Vérification de la syntaxe : Lancer la compilation via `npm run build`.
     - [x] Test unitaire (jest DOM) : Relancer Playwright pour valider qu'aucun test n'est brisé.
+
+## Phase 51 : Agrandissement des sélections de joueurs et couleurs blanches pour Pique/Trèfle
+* **[Agrandissement des Lignes de Choix de Joueurs et Boutons]**
+    - [x] Implémentation : Dans `src/index.css`, définir la classe `.player-fetiche-badge` avec des styles blancs et agrandis.
+    - [x] Implémentation : Dans `src/components/CardDrawer.tsx` et `src/App.tsx`, remplacer les badges de cartes inline par la classe `.player-fetiche-badge`, agrandir la police des noms à 14px, augmenter le padding des lignes et agrandir les boutons de choix.
+    - [x] Implémentation : Dans `src/App.tsx` et `src/components/CardDrawer.tsx`, modifier `getSuitSymbol` pour retourner des caractères textes de pique (♠) et trèfle (♣) au lieu d'émojis afin d'honorer la coloration blanche CSS.
+    - [x] Documentation (JSDoc et commentaires) : Documenter les choix d'agrandissement et l'usage de caractères texte pour la couleur.
+    - [x] Vérification des imports : Aucun import mort.
+    - [x] Vérification de la syntaxe : Lancer `npm run build`.
+    - [x] Test unitaire (jest DOM) : Relancer Playwright pour valider que tous les tests passent.
